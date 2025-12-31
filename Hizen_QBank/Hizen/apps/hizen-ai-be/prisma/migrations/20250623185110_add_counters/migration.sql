@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "ChatSession" ADD COLUMN     "eventCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "messageCount" INTEGER NOT NULL DEFAULT 0;

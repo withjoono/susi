@@ -1,0 +1,26 @@
+{
+  "[json][jsonc][javascript][javascriptreact][typescript][typescriptreact]": {
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "always"
+    }
+  },
+  "eslint.useFlatConfig": true,
+  "eslint.validate": [
+    "javascript",
+    "typescript",
+    "javascriptreact",
+    "typescriptreact"
+  ],
+  "cSpell.enabled": true,
+  "cSpell.language": "en,ko",
+  "cSpell.words": [
+    "autoview",
+    "wrtnlabs",
+    "usehooks",
+    "conversate",
+    "codesandbox",
+    "sandpack"
+  ]
+}

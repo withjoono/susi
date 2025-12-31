@@ -1,0 +1,7 @@
+{
+  "name": "hizen-ai-fe",
+  "version": "0.1.0",
+  "main": "index.js",
+  "scripts": {},
+  "packageManager": "pnpm@10.6.2"
+}

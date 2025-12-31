@@ -1,0 +1,94 @@
+name: Deploy to ECS
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: 435335254983.dkr.ecr.ap-northeast-2.amazonaws.com
+  ECS_CLUSTER: hizen-ai
+  ECS_SERVICE: hyzen_ai_be-service-8qg5ws8f
+  ECS_TASK_DEFINITION: hyzen_ai_be_migration
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build a docker container and push it to ECR
+        docker build -t $ECR_REGISTRY/hizen-ai/be:$IMAGE_TAG -f docker/Dockerfile .
+        docker tag $ECR_REGISTRY/hizen-ai/be:$IMAGE_TAG $ECR_REGISTRY/hizen-ai/be:latest
+        docker push $ECR_REGISTRY/hizen-ai/be:$IMAGE_TAG
+        docker push $ECR_REGISTRY/hizen-ai/be:latest
+        echo "image=$ECR_REGISTRY/hizen-ai/be:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Deploy to Amazon ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ env.ECS_TASK_DEFINITION }}
+        service: ${{ env.ECS_SERVICE }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true
+
+  deploy-migration:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, tag, and push migration image to Amazon ECR
+      id: build-migration-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build migration docker container and push it to ECR
+        docker build -t $ECR_REGISTRY/hizen-ai/be-migration:$IMAGE_TAG -f docker/Dockerfile.migration .
+        docker tag $ECR_REGISTRY/hizen-ai/be-migration:$IMAGE_TAG $ECR_REGISTRY/hizen-ai/be-migration:latest
+        docker push $ECR_REGISTRY/hizen-ai/be-migration:$IMAGE_TAG
+        docker push $ECR_REGISTRY/hizen-ai/be-migration:latest
+        echo "image=$ECR_REGISTRY/hizen-ai/be-migration:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Run database migration
+      run: |
+        aws ecs run-task \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --task-definition hyzen_ai_be_migration \
+          --launch-type EC2 \
+          --region ${{ env.AWS_REGION }} 

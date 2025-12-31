@@ -1,0 +1,26 @@
+FROM node:24-bookworm-slim AS builder
+
+# Install OpenSSL for Prisma
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@10.6.2 --activate
+
+# Set working directory
+WORKDIR /app
+
+# Copy migration files
+COPY apps/hizen-ai-be/prisma/schema.prisma ./prisma/
+COPY apps/hizen-ai-be/prisma/migrations ./prisma/migrations
+
+# Install Prisma
+RUN pnpm install prisma && pnpm store prune
+
+# Go to the app directory
+WORKDIR /app/apps/hizen-ai-be-migration
+
+# Start the application
+CMD ["pnpm", "prisma", "migrate", "deploy"]

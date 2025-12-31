@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hizen AI 문제 은행</title>
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- KaTeX CSS for LaTeX rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+
+  <!-- KaTeX Copy-tex CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/copy-tex.min.css">
+
+  <!-- KaTeX JS -->
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+
+  <!-- KaTeX Auto-render extension -->
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+
+  <!-- KaTeX Copy-tex extension (복사 기능) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/copy-tex.min.js"></script>
+
+  <!-- KaTeX mhchem extension (화학 수식) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/mhchem.min.js"></script>
+
+  <!-- Plotly.js for interactive scientific graphs -->
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+
+  <!-- Chart.js for statistical charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Mermaid.js for diagrams and flowcharts -->
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        curve: 'basis'
+      }
+    });
+    window.mermaid = mermaid;
+  </script>
+
+  <!-- JSXGraph for interactive geometry -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph@1.8.0/distrib/jsxgraph.css">
+  <script src="https://cdn.jsdelivr.net/npm/jsxgraph@1.8.0/distrib/jsxgraphcore.js"></script>
+
+  <!-- 🧪 Chemistry Libraries -->
+  <!-- 3Dmol.js for 3D molecular visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/3dmol@2.0.4/build/3Dmol-min.js"></script>
+
+  <!-- Ketcher for chemical structure editor -->
+  <script src="https://cdn.jsdelivr.net/npm/ketcher-standalone@2.7.2/dist/ketcher.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ketcher-standalone@2.7.2/dist/ketcher.css">
+
+  <!-- ChemDoodle for advanced chemistry visualization -->
+  <link rel="stylesheet" href="https://web.chemdoodle.com/install/ChemDoodleWeb.css">
+  <script src="https://web.chemdoodle.com/install/ChemDoodleWeb.js"></script>
+
+  <!-- ⚛️ Physics Libraries -->
+  <!-- Matter.js for 2D physics engine -->
+  <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+
+  <!-- p5.js for physics/math simulations -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+
+  <!-- 🧬 Biology Libraries -->
+  <!-- Cytoscape.js for biological networks -->
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+
+  <!-- Phylotree.js for phylogenetic trees -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/phylotree@1.1.0/phylotree.css">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/phylotree@1.1.0/phylotree.js"></script>
+
+  <!-- IGV.js for genome browser -->
+  <script src="https://cdn.jsdelivr.net/npm/igv@2.15.7/dist/igv.min.js"></script>
+
+  <!-- 🌍 Earth Science Libraries -->
+  <!-- Leaflet for maps -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Cesium for 3D globe -->
+  <script src="https://cdn.jsdelivr.net/npm/cesium@1.111.0/Build/Cesium/Cesium.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.111.0/Build/Cesium/Widgets/widgets.css">
+
+  <!-- 🔬 General Science Libraries -->
+  <!-- Three.js for 3D visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <!-- 헤더 -->
+    <header class="header">
+      <h1>🤖 Hizen AI 문제 은행</h1>
+      <p class="subtitle">AI 기반 문서 검색 및 질의응답 시스템</p>
+      <div id="serverStatus" class="status-badge">확인 중...</div>
+    </header>
+
+    <!-- 과목 선택 섹션 -->
+    <section class="card">
+      <h2>📚 과목 선택</h2>
+
+      <div class="form-group">
+        <label for="subjectSelect">교과 선택:</label>
+        <select
+          id="subjectSelect"
+          class="input-field"
+          onchange="onSubjectChange()"
+        >
+          <option value="">교과를 선택하세요</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="courseSelect">과목 선택:</label>
+        <select
+          id="courseSelect"
+          class="input-field"
+          onchange="onCourseChange()"
+          disabled
+        >
+          <option value="">먼저 교과를 선택하세요</option>
+        </select>
+      </div>
+
+      <div id="selectedCourseInfo" class="info-box" style="display: none;">
+        <h3>✅ 선택한 과목</h3>
+        <p class="selected-course-display">
+          <span id="selectedSubject">-</span> >
+          <strong id="selectedCourse">-</strong>
+        </p>
+      </div>
+    </section>
+
+    <!-- 스토어 초기화 섹션 -->
+    <section class="card">
+      <h2>📦 스토어 관리</h2>
+
+      <div class="form-group">
+        <label>스토어 초기화 방식:</label>
+        <div class="radio-group">
+          <label>
+            <input type="radio" name="storeType" value="new" checked>
+            새 스토어 생성
+          </label>
+          <label>
+            <input type="radio" name="storeType" value="existing">
+            기존 스토어 사용
+          </label>
+        </div>
+      </div>
+
+      <div id="newStoreForm" class="form-section">
+        <div class="form-group">
+          <label for="storeDisplayName">스토어 이름:</label>
+          <input
+            type="text"
+            id="storeDisplayName"
+            placeholder="예: my-knowledge-base"
+            class="input-field"
+          >
+        </div>
+        <button onclick="initializeStore()" class="btn btn-primary">
+          🚀 새 스토어 생성
+        </button>
+      </div>
+
+      <div id="existingStoreForm" class="form-section" style="display: none;">
+        <div class="form-group">
+          <label for="existingStoreSelect">기존 스토어 선택:</label>
+          <select
+            id="existingStoreSelect"
+            class="input-field"
+          >
+            <option value="">스토어 목록 불러오는 중...</option>
+          </select>
+        </div>
+        <button onclick="useExistingStore()" class="btn btn-primary">
+          📂 선택한 스토어 사용
+        </button>
+      </div>
+
+      <div id="currentStoreInfo" class="info-box" style="display: none;">
+        <h3>✅ 현재 활성 스토어</h3>
+        <p id="currentStoreName" class="store-name-display">-</p>
+        <p id="currentStoreDetails" class="store-details">-</p>
+      </div>
+    </section>
+
+    <!-- 문서 관리 섹션 -->
+    <section class="card">
+      <h2>📚 문서 관리</h2>
+
+      <button onclick="loadDocuments()" class="btn btn-secondary">
+        🔄 문서 목록 새로고침
+      </button>
+
+      <div id="documentsList" class="documents-list"></div>
+    </section>
+
+    <!-- 파일 업로드 섹션 -->
+    <section class="card">
+      <h2>📤 파일 업로드</h2>
+
+      <div class="form-group">
+        <label>업로드 방식:</label>
+        <div class="radio-group">
+          <label>
+            <input type="radio" name="uploadType" value="direct" checked>
+            직접 업로드 (빠름)
+          </label>
+          <label>
+            <input type="radio" name="uploadType" value="import">
+            Files API Import (메타데이터 지원)
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="fileInput">파일 선택:</label>
+        <input
+          type="file"
+          id="fileInput"
+          class="file-input"
+          accept=".txt,.pdf,.doc,.docx,.md"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="fileDisplayName">표시 이름 (선택사항):</label>
+        <input
+          type="text"
+          id="fileDisplayName"
+          placeholder="파일 표시 이름"
+          class="input-field"
+        >
+      </div>
+
+      <!-- 청킹 설정 -->
+      <div class="collapsible">
+        <button onclick="toggleSection('chunkingSection')" class="collapsible-btn">
+          ⚙️ 청킹 설정 (선택사항)
+        </button>
+        <div id="chunkingSection" class="collapsible-content">
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="enableChunking" checked>
+              청킹 활성화 (기본 권장)
+            </label>
+          </div>
+          <div id="chunkingOptions" style="display: block;">
+            <div class="form-group">
+              <label for="maxTokensPerChunk">청크당 최대 토큰:</label>
+              <input
+                type="number"
+                id="maxTokensPerChunk"
+                value="250"
+                min="100"
+                max="500"
+                class="input-field"
+              >
+              <small>권장: 코드 150, 기술문서 250, 장문 400</small>
+            </div>
+            <div class="form-group">
+              <label for="maxOverlapTokens">청크 간 오버랩 토큰:</label>
+              <input
+                type="number"
+                id="maxOverlapTokens"
+                value="25"
+                min="0"
+                max="100"
+                class="input-field"
+              >
+              <small>권장: 최대 토큰의 10%</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 메타데이터 설정 (Files API Import만) -->
+      <div id="metadataSection" class="collapsible" style="display: none;">
+        <button onclick="toggleSection('metadataContent')" class="collapsible-btn">
+          🏷️ 커스텀 메타데이터 (선택사항)
+        </button>
+        <div id="metadataContent" class="collapsible-content">
+          <div id="metadataList"></div>
+          <button onclick="addMetadataField()" class="btn btn-secondary">
+            ➕ 메타데이터 추가
+          </button>
+        </div>
+      </div>
+
+      <button onclick="uploadFile()" class="btn btn-primary btn-large">
+        📤 파일 업로드
+      </button>
+
+      <div id="uploadProgress" class="progress-box" style="display: none;"></div>
+    </section>
+
+    <!-- 1. 문제요청 섹션 -->
+    <section class="card">
+      <h2>📝 문제 요청</h2>
+
+      <div class="form-group">
+        <label>문제 유형:</label>
+        <div class="radio-group">
+          <label>
+            <input type="radio" name="problemType" value="multiple" checked>
+            객관식
+          </label>
+          <label>
+            <input type="radio" name="problemType" value="subjective">
+            주관식
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="publisherSelect">출판사 선택:</label>
+        <select
+          id="publisherSelect"
+          class="input-field"
+          onchange="onPublisherChange()"
+          disabled
+        >
+          <option value="">먼저 과목을 선택하세요</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="chapterSelect">단원 선택:</label>
+        <select
+          id="chapterSelect"
+          class="input-field"
+          onchange="onChapterChange()"
+          disabled
+        >
+          <option value="">먼저 출판사를 선택하세요</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="questionCountSelect">문항 수:</label>
+        <select
+          id="questionCountSelect"
+          class="input-field"
+        >
+          <option value="1">1문항</option>
+          <option value="2">2문항</option>
+          <option value="3" selected>3문항</option>
+          <option value="4">4문항</option>
+          <option value="5">5문항</option>
+          <option value="10">10문항</option>
+          <option value="15">15문항</option>
+          <option value="20">20문항</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="problemRequestInput">추가 요청사항 (선택사항):</label>
+        <textarea
+          id="problemRequestInput"
+          placeholder="예: 난이도를 높게 출제해주세요"
+          class="textarea-field"
+          rows="2"
+        ></textarea>
+      </div>
+
+      <button onclick="requestProblem()" class="btn btn-primary btn-large">
+        📋 문제 요청하기
+      </button>
+    </section>
+
+    <!-- 2. 문제 섹션 -->
+    <section class="card">
+      <h2>📚 문제</h2>
+
+      <div id="problemBox" class="problem-box" style="display: none;">
+        <div class="problem-header">
+          <span id="problemType" class="problem-type-badge">객관식</span>
+        </div>
+        <div id="problemContent" class="problem-content"></div>
+      </div>
+
+      <div id="noProblem" class="info-message">
+        ℹ️ 위 섹션에서 문제를 요청해주세요.
+      </div>
+    </section>
+
+    <!-- 3. 풀이와 해답 섹션 -->
+    <section class="card">
+      <h2>✅ 풀이와 해답</h2>
+
+      <button
+        id="requestSolutionBtn"
+        onclick="requestSolution()"
+        class="btn btn-secondary btn-large"
+        style="display: none;"
+      >
+        💡 풀이 요청하기
+      </button>
+
+      <div id="solutionBox" class="solution-box" style="display: none;">
+        <h3>풀이:</h3>
+        <div id="solutionContent"></div>
+      </div>
+
+      <div id="noSolution" class="info-message">
+        ℹ️ 문제가 출제된 후 풀이를 요청할 수 있습니다.
+      </div>
+    </section>
+
+    <!-- 질의응답 섹션 (기존 기능 유지) -->
+    <section class="card">
+      <h2>💬 질의와 응답</h2>
+
+      <div class="form-group">
+        <label for="questionInput">질문:</label>
+        <textarea
+          id="questionInput"
+          placeholder="업로드된 문서에 대해 자유롭게 질문하세요..."
+          class="textarea-field"
+          rows="3"
+        ></textarea>
+      </div>
+
+      <button onclick="askQuestion()" class="btn btn-primary btn-large">
+        🔍 질문하기
+      </button>
+
+      <div id="answerBox" class="answer-box" style="display: none;">
+        <h3>답변:</h3>
+        <div id="answerContent"></div>
+      </div>
+    </section>
+
+    <!-- 푸터 -->
+    <footer class="footer">
+      <p>Powered by Google Gemini API | Built with ❤️</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

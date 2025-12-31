@@ -1,0 +1,14 @@
+{
+  "name": "hizen-ai-backend",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "cd apps/hizen-ai-be && npx prisma generate && cross-env NODE_ENV=development npx nestia sdk && cd packages/api && npm run compile && cd .. && npm run build",
+    "build:parallel": "pnpm -r build",
+    "generate:db-encryption-key": "cd apps/database-encryption-key-generator && pnpm run generate"
+  },
+  "devDependencies": {
+    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
+    "cross-env": "^10.1.0"
+  },
+  "packageManager": "pnpm@10.6.2"
+}

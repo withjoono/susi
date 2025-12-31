@@ -1,0 +1,6 @@
+packages:
+  - "apps/hizen-ai-be"
+  - "apps/hizen-ai-be/packages/*"
+  - "apps/hizen-ai-fe"
+
+packageManager: pnpm@10.6.2

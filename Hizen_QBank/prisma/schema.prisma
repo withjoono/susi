@@ -1,0 +1,1199 @@
+// ============================================================================
+// 문제은행 플랫폼 Prisma Schema
+// Framework: NestJS + Prisma
+// Database: MySQL 8.0+
+// ============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum UserType {
+  ST // 학생
+  PA // 학부모
+  TE // 학습관리선생님
+  ED // 에디터
+  CE // 수석에디터
+  AD // 관리자
+  SA // 영업
+  AG // 대행사
+  AC // 학원
+  CS // 고객서비스
+}
+
+enum VerificationStatus {
+  pending
+  verified
+  rejected
+}
+
+enum SchoolLevel {
+  elementary // 초등
+  middle     // 중등
+  high       // 고등
+  n_su       // N수
+}
+
+enum ExamType {
+  naesin       // 내신
+  sunung       // 수능
+  moee         // 모의
+  simchung     // 심층면접
+  teukmok      // 특목자
+  jasago       // 자사고
+  nonsul       // 논술
+}
+
+enum QuestionType {
+  multiple_choice // 객관식
+  short_answer    // 주관식
+  essay           // 서술형
+}
+
+enum Difficulty {
+  very_easy // 매우쉬움
+  easy      // 쉬움
+  normal    // 보통
+  hard      // 어려움
+  killer    // 킬러
+}
+
+enum ProblemStatus {
+  pending  // 검수대기
+  approved // 승인
+  rejected // 반려
+}
+
+enum GeneratedProblemStatus {
+  generated // 생성됨
+  pending   // 검수대기
+  approved  // 승인
+  rejected  // 반려
+}
+
+enum PaperType {
+  naesin_prep  // 내신대비
+  sunung_prep  // 수능대비
+  mock_exam    // 모의고사
+  assignment   // 과제
+  custom       // 자체제작
+}
+
+enum PaperStatus {
+  draft
+  published
+  archived
+}
+
+enum ShowAnswerAfter {
+  immediate
+  submit
+  deadline
+  manual
+}
+
+enum AttemptStatus {
+  in_progress
+  submitted
+  graded
+  expired
+}
+
+enum TransactionType {
+  purchase
+  use
+  refund
+  bonus
+  expire
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  refunded
+}
+
+enum UsedFor {
+  paper_create
+  ai_generate
+  download
+  subscription
+}
+
+enum PlanType {
+  free
+  basic
+  premium
+  enterprise
+}
+
+enum BillingCycle {
+  monthly
+  yearly
+}
+
+enum SubscriptionStatus {
+  active
+  cancelled
+  expired
+  suspended
+}
+
+enum RelationshipType {
+  direct
+  academy
+  online
+}
+
+enum TutorStudentStatus {
+  active
+  inactive
+  pending
+}
+
+enum ContentStatus {
+  draft
+  published
+  archived
+}
+
+enum AssignmentTargetType {
+  individual
+  class
+  all
+}
+
+enum AssignmentStatus {
+  draft
+  published
+  closed
+}
+
+enum ChatType {
+  direct
+  group
+  support
+}
+
+enum MessageType {
+  text
+  image
+  file
+  system
+}
+
+enum NotificationType {
+  system
+  assignment
+  grade
+  message
+  payment
+  promotion
+}
+
+enum TicketCategory {
+  technical // 기술
+  payment   // 결제
+  account   // 계정
+  other     // 기타
+}
+
+enum TicketPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  waiting_customer
+  resolved
+  closed
+}
+
+enum UnitLevel {
+  large  // 대단원
+  medium // 중단원
+  small  // 소단원
+}
+
+enum Semester {
+  first  // 1학기
+  second // 2학기
+}
+
+// ============================================================================
+// 1. 기초 코드 테이블 (Lookup Tables)
+// ============================================================================
+
+/// 학년 코드
+model SchoolGrade {
+  gradeId     String      @id @map("grade_id") @db.VarChar(5)
+  gradeName   String      @map("grade_name") @db.VarChar(20)
+  schoolLevel SchoolLevel @map("school_level")
+  sortOrder   Int         @default(0) @map("sort_order")
+
+  // Relations
+  users             User[]
+  problemsReference ProblemsReference[]
+  problemsGenerated ProblemsGenerated[]
+  papers            Paper[]
+  videos            Video[]
+
+  @@map("school_grades")
+}
+
+/// 교육과정 연도
+model CurriculumYear {
+  curiYearId   Int    @id @map("curi_year_id")
+  curiYearName String @map("curi_year_name") @db.VarChar(20)
+
+  // Relations
+  subjectCodesMinor SubjectCodeMinor[]
+  textbooks         Textbook[]
+
+  @@map("curriculum_years")
+}
+
+/// 과목 대분류
+model SubjectCodeMajor {
+  subjectMajorId String @id @map("subject_major_id") @db.VarChar(5)
+  subjectArea    String @map("subject_area") @db.VarChar(20)
+  subjectCode    String @map("subject_code") @db.Char(1)
+  sortOrder      Int    @default(1) @map("sort_order")
+
+  // Relations
+  subjectCodesMinor SubjectCodeMinor[]
+  problemsReference ProblemsReference[]
+  problemsGenerated ProblemsGenerated[]
+  papers            Paper[]
+  videos            Video[]
+
+  @@map("subject_codes_major")
+}
+
+/// 과목 소분류
+model SubjectCodeMinor {
+  subjectMinorId String @id @map("subject_minor_id") @db.VarChar(10)
+  curiYearId     Int    @map("curi_year_id")
+  subjectMajorId String @map("subject_major_id") @db.VarChar(5)
+  subjectName    String @map("subject_name") @db.VarChar(50)
+  sortOrder      Int    @default(1) @map("sort_order")
+
+  // Relations
+  curriculumYear    CurriculumYear    @relation(fields: [curiYearId], references: [curiYearId])
+  subjectCodeMajor  SubjectCodeMajor  @relation(fields: [subjectMajorId], references: [subjectMajorId])
+  problemsReference ProblemsReference[]
+  problemsGenerated ProblemsGenerated[]
+  papers            Paper[]
+  videos            Video[]
+  textbooks         Textbook[]
+  publisherAuthors  PublisherAuthor[]
+
+  @@index([curiYearId])
+  @@index([subjectMajorId])
+  @@map("subject_codes_minor")
+}
+
+/// 시험 유형
+model TestType {
+  testTypeId   String @id @map("test_type_id") @db.VarChar(5)
+  testTypeName String @map("test_type_name") @db.VarChar(20)
+
+  // Relations
+  testSources       TestSource[]
+  problemsReference ProblemsReference[]
+
+  @@map("test_types")
+}
+
+/// 시험 출처
+model TestSource {
+  sourceId    Int     @id @default(autoincrement()) @map("source_id")
+  testTypeId  String  @map("test_type_id") @db.VarChar(5)
+  sourceCode  String  @unique @map("source_code") @db.VarChar(20)
+  exampleId   String? @map("example_id") @db.VarChar(30)
+  idFormat    String? @map("id_format") @db.VarChar(100)
+  description String? @db.Text
+
+  // Relations
+  testType TestType @relation(fields: [testTypeId], references: [testTypeId])
+
+  @@index([testTypeId])
+  @@map("test_sources")
+}
+
+/// 고등학교 정보
+model Highschool {
+  schoolId        String  @id @map("school_id") @db.VarChar(10)
+  schoolCategory  String? @map("school_category") @db.VarChar(20)
+  schoolType      String? @map("school_type") @db.VarChar(20)
+  regionCity      String? @map("region_city") @db.VarChar(20)
+  regionDistrict  String? @map("region_district") @db.VarChar(20)
+  educationOffice String? @map("education_office") @db.VarChar(20)
+  schoolName      String  @map("school_name") @db.VarChar(100)
+  schoolLevel     String? @map("school_level") @db.VarChar(20)
+  dayNight        String? @map("day_night") @db.VarChar(10)
+  gender          String? @db.VarChar(10)
+  foundingType    String? @map("founding_type") @db.VarChar(20)
+  postalCode      String? @map("postal_code") @db.VarChar(10)
+  address         String? @db.VarChar(255)
+  phone           String? @db.VarChar(20)
+  fax             String? @db.VarChar(20)
+  website         String? @db.VarChar(255)
+
+  // Relations
+  users             User[]
+  problemsReference ProblemsReference[]
+
+  @@map("highschools")
+}
+
+/// 대학교 정보
+model University {
+  univId        String  @id @map("univ_id") @db.VarChar(10)
+  univName      String  @map("univ_name") @db.VarChar(100)
+  univNameAlias String? @map("univ_name_alias") @db.VarChar(100)
+  region        String? @db.VarChar(20)
+
+  // Relations
+  problemsReference ProblemsReference[]
+
+  @@map("universities")
+}
+
+/// 출판사
+model Publisher {
+  publisherId   Int      @id @default(autoincrement()) @map("publisher_id")
+  publisherName String   @map("publisher_name") @db.VarChar(100)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  authors   PublisherAuthor[]
+  textbooks Textbook[]
+
+  @@map("publishers")
+}
+
+/// 출판사 저자
+model PublisherAuthor {
+  authorId       Int     @id @default(autoincrement()) @map("author_id")
+  publisherId    Int     @map("publisher_id")
+  authorName     String  @map("author_name") @db.VarChar(100)
+  subjectMinorId String? @map("subject_minor_id") @db.VarChar(10)
+
+  // Relations
+  publisher        Publisher         @relation(fields: [publisherId], references: [publisherId])
+  subjectCodeMinor SubjectCodeMinor? @relation(fields: [subjectMinorId], references: [subjectMinorId])
+  textbooks        Textbook[]
+
+  @@index([publisherId])
+  @@index([subjectMinorId])
+  @@map("publisher_authors")
+}
+
+// ============================================================================
+// 2. 역할 및 권한 테이블 (RBAC)
+// ============================================================================
+
+/// 역할 정의
+model Role {
+  roleId      String   @id @map("role_id") @db.VarChar(20)
+  roleName    String   @map("role_name") @db.VarChar(50)
+  roleScope   String?  @map("role_scope") @db.VarChar(20)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@map("roles")
+}
+
+/// 권한 정의
+model Permission {
+  permId      String   @id @map("perm_id") @db.VarChar(50)
+  permName    String   @map("perm_name") @db.VarChar(100)
+  category    String?  @db.VarChar(50)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+/// 역할-권한 매핑
+model RolePermission {
+  roleId    String   @map("role_id") @db.VarChar(20)
+  permId    String   @map("perm_id") @db.VarChar(50)
+  grantedBy String?  @map("granted_by") @db.VarChar(36)
+  grantedAt DateTime @default(now()) @map("granted_at")
+
+  // Relations
+  role       Role       @relation(fields: [roleId], references: [roleId])
+  permission Permission @relation(fields: [permId], references: [permId])
+
+  @@id([roleId, permId])
+  @@map("role_permissions")
+}
+
+// ============================================================================
+// 3. 사용자 테이블
+// ============================================================================
+
+/// 통합 사용자 테이블
+model User {
+  userId       String   @id @map("user_id") @db.VarChar(36)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  name         String   @db.VarChar(100)
+  phone        String?  @db.VarChar(20)
+  userType     UserType @map("user_type")
+
+  // 학생 전용 필드
+  schoolName     String?  @map("school_name") @db.VarChar(255)
+  schoolId       String?  @map("school_id") @db.VarChar(10)
+  gradeId        String?  @map("grade_id") @db.VarChar(5)
+  enrollmentYear Int?     @map("enrollment_year")
+  schoolType     String?  @map("school_type") @db.VarChar(20)
+
+  // 학부모 전용 필드
+  childUserId String? @map("child_user_id") @db.VarChar(36)
+
+  // 교사/에디터 전용 필드
+  specialization Json?   @db.Json
+  organization   String? @db.VarChar(100)
+
+  // 공통 상태 필드
+  verificationStatus VerificationStatus @default(pending) @map("verification_status")
+  isActive           Boolean            @default(true) @map("is_active")
+
+  // 마케팅/분석 필드
+  marketingConsent Boolean @default(false) @map("marketing_consent")
+  referralSource   String? @map("referral_source") @db.VarChar(100)
+  specialNotes     String? @map("special_notes") @db.Text
+
+  // 로그인 추적
+  lastLogin  DateTime? @map("last_login")
+  loginCount Int       @default(0) @map("login_count")
+
+  // 타임스탬프
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  schoolGrade SchoolGrade? @relation(fields: [gradeId], references: [gradeId])
+  highschool  Highschool?  @relation(fields: [schoolId], references: [schoolId])
+
+  userRoles            UserRole[]
+  tutorStudentsAsTutor TutorStudent[]        @relation("TutorRelation")
+  tutorStudentsAsStudent TutorStudent[]      @relation("StudentRelation")
+  problemsUploaded     ProblemsReference[]   @relation("Uploader")
+  problemsReviewed     ProblemsReference[]   @relation("Reviewer")
+  problemsGenerated    ProblemsGenerated[]   @relation("Creator")
+  problemsReviewedGen  ProblemsGenerated[]   @relation("ReviewerGen")
+  papers               Paper[]
+  examAttempts         ExamAttempt[]
+  transactions         Transaction[]
+  subscriptions        Subscription[]
+  videos               Video[]
+  assignments          Assignment[]
+  chatsCreated         Chat[]
+  chatParticipants     ChatParticipant[]
+  messages             Message[]
+  notifications        Notification[]
+  ticketsCreated       SupportTicket[]       @relation("TicketCreator")
+  ticketsAssigned      SupportTicket[]       @relation("TicketAssignee")
+  ticketComments       TicketComment[]
+
+  @@index([userType])
+  @@index([email])
+  @@index([schoolId])
+  @@index([createdAt])
+  @@map("users")
+}
+
+/// 사용자-역할 매핑
+model UserRole {
+  userId     String    @map("user_id") @db.VarChar(36)
+  roleId     String    @map("role_id") @db.VarChar(20)
+  assignedBy String?   @map("assigned_by") @db.VarChar(36)
+  assignedAt DateTime  @default(now()) @map("assigned_at")
+  expiresAt  DateTime? @map("expires_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [userId])
+  role Role @relation(fields: [roleId], references: [roleId])
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+/// 교사-학생 관계
+model TutorStudent {
+  id               Int                 @id @default(autoincrement())
+  tutorId          String              @map("tutor_id") @db.VarChar(36)
+  studentId        String              @map("student_id") @db.VarChar(36)
+  relationshipType RelationshipType    @default(direct) @map("relationship_type")
+  status           TutorStudentStatus  @default(pending)
+  startDate        DateTime?           @map("start_date") @db.Date
+  endDate          DateTime?           @map("end_date") @db.Date
+  notes            String?             @db.Text
+  createdAt        DateTime            @default(now()) @map("created_at")
+
+  // Relations
+  tutor   User @relation("TutorRelation", fields: [tutorId], references: [userId])
+  student User @relation("StudentRelation", fields: [studentId], references: [userId])
+
+  @@unique([tutorId, studentId])
+  @@map("tutor_students")
+}
+
+// ============================================================================
+// 4. 문제 테이블
+// ============================================================================
+
+/// 기출문제
+model ProblemsReference {
+  problemId String @id @map("problem_id") @db.VarChar(36)
+
+  // 시험 정보
+  testTypeId String   @map("test_type_id") @db.VarChar(5)
+  examType   ExamType @map("exam_type")
+
+  // 출처 정보
+  schoolId   String?   @map("school_id") @db.VarChar(10)
+  univId     String?   @map("univ_id") @db.VarChar(10)
+  year       Int       @db.SmallInt
+  gradeId    String?   @map("grade_id") @db.VarChar(5)
+  semester   Semester?
+  examPeriod String?   @map("exam_period") @db.VarChar(50)
+
+  // 과목 정보
+  subjectMajorId String  @map("subject_major_id") @db.VarChar(5)
+  subjectMinorId String? @map("subject_minor_id") @db.VarChar(10)
+
+  // 단원 정보
+  largeUnit  String? @map("large_unit") @db.VarChar(255)
+  mediumUnit String? @map("medium_unit") @db.VarChar(255)
+  smallUnit  String? @map("small_unit") @db.VarChar(255)
+
+  // 문제 내용
+  problemNumber        Int?    @map("problem_number") @db.SmallInt
+  problemText          String  @map("problem_text") @db.Text
+  problemImageUrl      String? @map("problem_image_url") @db.VarChar(500)
+  problemImageKeywords Json?   @map("problem_image_keywords") @db.Json
+  hasTable             Boolean @default(false) @map("has_table")
+  tableKeywords        Json?   @map("table_keywords") @db.Json
+  passageText          String? @map("passage_text") @db.Text
+
+  // 선택지 및 정답
+  choices  Json?  @db.Json
+  answer   String @db.Text
+  solution String? @db.LongText
+
+  // 문제 속성
+  questionType    QuestionType @map("question_type")
+  difficulty      Difficulty   @default(normal)
+  score           Int          @default(1)
+
+  // AI 분석 필드
+  thinkingPattern String? @map("thinking_pattern") @db.VarChar(255)
+  keywords        Json?   @db.Json
+
+  // 관리 필드
+  sourceFile String?       @map("source_file") @db.VarChar(500)
+  uploaderId String?       @map("uploader_id") @db.VarChar(36)
+  status     ProblemStatus @default(pending)
+  reviewerId String?       @map("reviewer_id") @db.VarChar(36)
+  reviewedAt DateTime?     @map("reviewed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  testType         TestType          @relation(fields: [testTypeId], references: [testTypeId])
+  highschool       Highschool?       @relation(fields: [schoolId], references: [schoolId])
+  university       University?       @relation(fields: [univId], references: [univId])
+  schoolGrade      SchoolGrade?      @relation(fields: [gradeId], references: [gradeId])
+  subjectCodeMajor SubjectCodeMajor  @relation(fields: [subjectMajorId], references: [subjectMajorId])
+  subjectCodeMinor SubjectCodeMinor? @relation(fields: [subjectMinorId], references: [subjectMinorId])
+  uploader         User?             @relation("Uploader", fields: [uploaderId], references: [userId])
+  reviewer         User?             @relation("Reviewer", fields: [reviewerId], references: [userId])
+
+  generatedProblems ProblemsGenerated[]
+  paperProblems     PaperProblem[]
+
+  @@index([testTypeId])
+  @@index([subjectMajorId, subjectMinorId])
+  @@index([year])
+  @@index([difficulty])
+  @@index([status])
+  @@fulltext([problemText, solution])
+  @@map("problems_reference")
+}
+
+/// AI 생성 문제
+model ProblemsGenerated {
+  problemId String @id @map("problem_id") @db.VarChar(36)
+
+  // 생성 정보
+  creatorId        String  @map("creator_id") @db.VarChar(36)
+  generationPrompt String? @map("generation_prompt") @db.Text
+  baseProblemId    String? @map("base_problem_id") @db.VarChar(36)
+
+  // 과목 정보
+  subjectMajorId String  @map("subject_major_id") @db.VarChar(5)
+  subjectMinorId String? @map("subject_minor_id") @db.VarChar(10)
+
+  // 단원 정보
+  largeUnit  String? @map("large_unit") @db.VarChar(255)
+  mediumUnit String? @map("medium_unit") @db.VarChar(255)
+  smallUnit  String? @map("small_unit") @db.VarChar(255)
+
+  // 문제 내용
+  problemText     String  @map("problem_text") @db.Text
+  problemImageUrl String? @map("problem_image_url") @db.VarChar(500)
+  choices         Json?   @db.Json
+  answer          String  @db.Text
+  solution        String? @db.LongText
+
+  // 문제 속성
+  questionType  QuestionType @map("question_type")
+  difficulty    Difficulty   @default(normal)
+  targetGradeId String?      @map("target_grade_id") @db.VarChar(5)
+
+  // AI 분석 필드
+  thinkingPattern  String? @map("thinking_pattern") @db.VarChar(255)
+  keywords         Json?   @db.Json
+  aiModel          String? @map("ai_model") @db.VarChar(50)
+  generationParams Json?   @map("generation_params") @db.Json
+
+  // 품질 관리
+  qualityScore    Decimal?               @map("quality_score") @db.Decimal(3, 2)
+  status          GeneratedProblemStatus @default(generated)
+  reviewerId      String?                @map("reviewer_id") @db.VarChar(36)
+  reviewedAt      DateTime?              @map("reviewed_at")
+  rejectionReason String?                @map("rejection_reason") @db.Text
+
+  // 사용 통계
+  useCount    Int     @default(0) @map("use_count")
+  ratingAvg   Decimal @default(0.0) @map("rating_avg") @db.Decimal(2, 1)
+  ratingCount Int     @default(0) @map("rating_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  creator          User              @relation("Creator", fields: [creatorId], references: [userId])
+  baseProblem      ProblemsReference? @relation(fields: [baseProblemId], references: [problemId])
+  subjectCodeMajor SubjectCodeMajor  @relation(fields: [subjectMajorId], references: [subjectMajorId])
+  subjectCodeMinor SubjectCodeMinor? @relation(fields: [subjectMinorId], references: [subjectMinorId])
+  targetGrade      SchoolGrade?      @relation(fields: [targetGradeId], references: [gradeId])
+  reviewer         User?             @relation("ReviewerGen", fields: [reviewerId], references: [userId])
+
+  paperProblems PaperProblem[]
+
+  @@index([creatorId])
+  @@index([subjectMajorId, subjectMinorId])
+  @@index([status])
+  @@index([qualityScore])
+  @@map("problems_generated")
+}
+
+// ============================================================================
+// 5. 시험지 테이블
+// ============================================================================
+
+/// 시험지
+model Paper {
+  paperId   String @id @map("paper_id") @db.VarChar(36)
+  creatorId String @map("creator_id") @db.VarChar(36)
+
+  // 시험지 정보
+  title       String    @db.VarChar(255)
+  description String?   @db.Text
+  paperType   PaperType @map("paper_type")
+
+  // 대상 정보
+  targetGradeId  String? @map("target_grade_id") @db.VarChar(5)
+  subjectMajorId String  @map("subject_major_id") @db.VarChar(5)
+  subjectMinorId String? @map("subject_minor_id") @db.VarChar(10)
+
+  // 시험 설정
+  timeLimit        Int?            @map("time_limit")
+  totalScore       Int             @default(100) @map("total_score")
+  passingScore     Int?            @map("passing_score")
+  shuffleQuestions Boolean         @default(false) @map("shuffle_questions")
+  shuffleChoices   Boolean         @default(false) @map("shuffle_choices")
+  showAnswerAfter  ShowAnswerAfter @default(submit) @map("show_answer_after")
+
+  // 공개 설정
+  isPublic   Boolean @default(false) @map("is_public")
+  accessCode String? @map("access_code") @db.VarChar(20)
+
+  // 상태
+  status      PaperStatus @default(draft)
+  publishedAt DateTime?   @map("published_at")
+
+  // 통계
+  attemptCount Int      @default(0) @map("attempt_count")
+  avgScore     Decimal? @map("avg_score") @db.Decimal(5, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  creator          User              @relation(fields: [creatorId], references: [userId])
+  targetGrade      SchoolGrade?      @relation(fields: [targetGradeId], references: [gradeId])
+  subjectCodeMajor SubjectCodeMajor  @relation(fields: [subjectMajorId], references: [subjectMajorId])
+  subjectCodeMinor SubjectCodeMinor? @relation(fields: [subjectMinorId], references: [subjectMinorId])
+
+  paperProblems PaperProblem[]
+  examAttempts  ExamAttempt[]
+  assignments   Assignment[]
+
+  @@index([creatorId])
+  @@index([status])
+  @@index([isPublic])
+  @@map("papers")
+}
+
+enum ProblemSourceType {
+  reference
+  generated
+}
+
+/// 시험지-문제 매핑
+model PaperProblem {
+  id             Int               @id @default(autoincrement())
+  paperId        String            @map("paper_id") @db.VarChar(36)
+  problemType    ProblemSourceType @map("problem_type")
+  problemId      String            @map("problem_id") @db.VarChar(36)
+  questionNumber Int               @map("question_number")
+  score          Int               @default(1)
+
+  // Relations
+  paper             Paper              @relation(fields: [paperId], references: [paperId], onDelete: Cascade)
+  problemReference  ProblemsReference? @relation(fields: [problemId], references: [problemId], map: "paper_problems_reference_fk")
+  problemGenerated  ProblemsGenerated? @relation(fields: [problemId], references: [problemId], map: "paper_problems_generated_fk")
+
+  examAnswers ExamAnswer[]
+
+  @@unique([paperId, questionNumber])
+  @@index([problemId])
+  @@map("paper_problems")
+}
+
+// ============================================================================
+// 6. 시험 응시 테이블
+// ============================================================================
+
+/// 시험 응시
+model ExamAttempt {
+  attemptId String @id @map("attempt_id") @db.VarChar(36)
+  studentId String @map("student_id") @db.VarChar(36)
+  paperId   String @map("paper_id") @db.VarChar(36)
+
+  // 응시 정보
+  startedAt   DateTime  @map("started_at")
+  submittedAt DateTime? @map("submitted_at")
+  timeSpent   Int?      @map("time_spent")
+
+  // 결과
+  score      Decimal? @db.Decimal(5, 2)
+  totalScore Int?     @map("total_score")
+  percentage Decimal? @db.Decimal(5, 2)
+  ranking    Int?
+
+  // 상태
+  status AttemptStatus @default(in_progress)
+  isLate Boolean       @default(false) @map("is_late")
+
+  // 부정행위 감지
+  tabSwitchCount     Int   @default(0) @map("tab_switch_count")
+  copyPasteCount     Int   @default(0) @map("copy_paste_count")
+  suspiciousActivity Json? @map("suspicious_activity") @db.Json
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  student User  @relation(fields: [studentId], references: [userId])
+  paper   Paper @relation(fields: [paperId], references: [paperId])
+
+  examAnswers ExamAnswer[]
+
+  @@index([studentId])
+  @@index([paperId])
+  @@index([status])
+  @@map("exam_attempts")
+}
+
+/// 문제별 답안
+model ExamAnswer {
+  id             Int    @id @default(autoincrement())
+  attemptId      String @map("attempt_id") @db.VarChar(36)
+  paperProblemId Int    @map("paper_problem_id")
+
+  // 답안
+  studentAnswer String?  @map("student_answer") @db.Text
+  isCorrect     Boolean?  @map("is_correct")
+  scoreEarned   Decimal? @map("score_earned") @db.Decimal(5, 2)
+
+  // 서술형 채점
+  graderId        String?   @map("grader_id") @db.VarChar(36)
+  graderFeedback  String?   @map("grader_feedback") @db.Text
+  gradedAt        DateTime? @map("graded_at")
+
+  // 메타
+  timeSpent  Int?     @map("time_spent")
+  answeredAt DateTime @default(now()) @map("answered_at")
+
+  // Relations
+  attempt      ExamAttempt  @relation(fields: [attemptId], references: [attemptId], onDelete: Cascade)
+  paperProblem PaperProblem @relation(fields: [paperProblemId], references: [id])
+
+  @@index([attemptId])
+  @@map("exam_answers")
+}
+
+// ============================================================================
+// 7. 결제/크레딧 테이블
+// ============================================================================
+
+/// 거래 내역
+model Transaction {
+  transactionId String @id @map("transaction_id") @db.VarChar(36)
+  userId        String @map("user_id") @db.VarChar(36)
+
+  // 거래 정보
+  transactionType TransactionType @map("transaction_type")
+  amount          Int
+  balanceAfter    Int             @map("balance_after")
+
+  // 결제 정보
+  paymentMethod  String?        @map("payment_method") @db.VarChar(50)
+  paymentAmount  Decimal?       @map("payment_amount") @db.Decimal(10, 2)
+  paymentStatus  PaymentStatus? @map("payment_status")
+  pgTransactionId String?       @map("pg_transaction_id") @db.VarChar(100)
+
+  // 사용 정보
+  usedFor     UsedFor? @map("used_for")
+  referenceId String?  @map("reference_id") @db.VarChar(36)
+
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [userId])
+
+  @@index([userId])
+  @@index([transactionType])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+/// 구독
+model Subscription {
+  subscriptionId String @id @map("subscription_id") @db.VarChar(36)
+  userId         String @map("user_id") @db.VarChar(36)
+
+  // 구독 정보
+  planType PlanType @map("plan_type")
+  planName String   @map("plan_name") @db.VarChar(100)
+
+  // 기간
+  startedAt DateTime @map("started_at")
+  expiresAt DateTime @map("expires_at")
+
+  // 상태
+  status    SubscriptionStatus @default(active)
+  autoRenew Boolean            @default(true) @map("auto_renew")
+
+  // 결제
+  price         Decimal?      @db.Decimal(10, 2)
+  billingCycle  BillingCycle? @map("billing_cycle")
+  nextBillingAt DateTime?     @map("next_billing_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [userId])
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("subscriptions")
+}
+
+// ============================================================================
+// 8. 학습 콘텐츠 테이블
+// ============================================================================
+
+/// 동영상
+model Video {
+  videoId   String @id @map("video_id") @db.VarChar(36)
+  creatorId String @map("creator_id") @db.VarChar(36)
+
+  // 동영상 정보
+  title        String  @db.VarChar(255)
+  description  String? @db.Text
+  videoUrl     String  @map("video_url") @db.VarChar(500)
+  thumbnailUrl String? @map("thumbnail_url") @db.VarChar(500)
+  duration     Int?
+
+  // 분류
+  subjectMajorId String? @map("subject_major_id") @db.VarChar(5)
+  subjectMinorId String? @map("subject_minor_id") @db.VarChar(10)
+  targetGradeId  String? @map("target_grade_id") @db.VarChar(5)
+
+  // 관련 문제
+  relatedProblemId String? @map("related_problem_id") @db.VarChar(36)
+
+  // 통계
+  viewCount Int @default(0) @map("view_count")
+  likeCount Int @default(0) @map("like_count")
+
+  // 상태
+  status   ContentStatus @default(draft)
+  isPublic Boolean       @default(false) @map("is_public")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  creator          User              @relation(fields: [creatorId], references: [userId])
+  subjectCodeMajor SubjectCodeMajor? @relation(fields: [subjectMajorId], references: [subjectMajorId])
+  subjectCodeMinor SubjectCodeMinor? @relation(fields: [subjectMinorId], references: [subjectMinorId])
+  targetGrade      SchoolGrade?      @relation(fields: [targetGradeId], references: [gradeId])
+
+  @@map("videos")
+}
+
+/// 과제
+model Assignment {
+  assignmentId String @id @map("assignment_id") @db.VarChar(36)
+  creatorId    String @map("creator_id") @db.VarChar(36)
+
+  // 과제 정보
+  title       String  @db.VarChar(255)
+  description String? @db.Text
+  paperId     String? @map("paper_id") @db.VarChar(36)
+
+  // 기한
+  startDate             DateTime @map("start_date")
+  dueDate               DateTime @map("due_date")
+  lateSubmissionAllowed Boolean  @default(false) @map("late_submission_allowed")
+  latePenaltyPercent    Int      @default(0) @map("late_penalty_percent")
+
+  // 대상
+  targetType    AssignmentTargetType @default(individual) @map("target_type")
+  targetUserIds Json?                @map("target_user_ids") @db.Json
+
+  // 상태
+  status AssignmentStatus @default(draft)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  creator User   @relation(fields: [creatorId], references: [userId])
+  paper   Paper? @relation(fields: [paperId], references: [paperId])
+
+  @@map("assignments")
+}
+
+// ============================================================================
+// 9. 커뮤니케이션 테이블
+// ============================================================================
+
+/// 채팅방
+model Chat {
+  chatId   String   @id @map("chat_id") @db.VarChar(36)
+  chatType ChatType @map("chat_type")
+  name     String?  @db.VarChar(100)
+
+  createdBy String   @map("created_by") @db.VarChar(36)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  creator      User              @relation(fields: [createdBy], references: [userId])
+  participants ChatParticipant[]
+  messages     Message[]
+
+  @@map("chats")
+}
+
+/// 채팅 참여자
+model ChatParticipant {
+  chatId     String    @map("chat_id") @db.VarChar(36)
+  userId     String    @map("user_id") @db.VarChar(36)
+  joinedAt   DateTime  @default(now()) @map("joined_at")
+  lastReadAt DateTime? @map("last_read_at")
+  isAdmin    Boolean   @default(false) @map("is_admin")
+
+  // Relations
+  chat Chat @relation(fields: [chatId], references: [chatId], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [userId])
+
+  @@id([chatId, userId])
+  @@map("chat_participants")
+}
+
+/// 메시지
+model Message {
+  messageId   String      @id @map("message_id") @db.VarChar(36)
+  chatId      String      @map("chat_id") @db.VarChar(36)
+  senderId    String      @map("sender_id") @db.VarChar(36)
+  content     String      @db.Text
+  messageType MessageType @default(text) @map("message_type")
+  fileUrl     String?     @map("file_url") @db.VarChar(500)
+  isEdited    Boolean     @default(false) @map("is_edited")
+  editedAt    DateTime?   @map("edited_at")
+  isDeleted   Boolean     @default(false) @map("is_deleted")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  chat   Chat @relation(fields: [chatId], references: [chatId], onDelete: Cascade)
+  sender User @relation(fields: [senderId], references: [userId])
+
+  @@index([chatId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+/// 알림
+model Notification {
+  notificationId   String           @id @map("notification_id") @db.VarChar(36)
+  userId           String           @map("user_id") @db.VarChar(36)
+  title            String           @db.VarChar(255)
+  content          String?          @db.Text
+  notificationType NotificationType @map("notification_type")
+  actionUrl        String?          @map("action_url") @db.VarChar(500)
+  referenceType    String?          @map("reference_type") @db.VarChar(50)
+  referenceId      String?          @map("reference_id") @db.VarChar(36)
+  isRead           Boolean          @default(false) @map("is_read")
+  readAt           DateTime?        @map("read_at")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  expiresAt        DateTime?        @map("expires_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [userId])
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================================================
+// 10. 고객지원 테이블
+// ============================================================================
+
+/// 지원 티켓
+model SupportTicket {
+  ticketId           String         @id @map("ticket_id") @db.VarChar(36)
+  userId             String         @map("user_id") @db.VarChar(36)
+  category           TicketCategory
+  subject            String         @db.VarChar(255)
+  description        String         @db.Text
+  priority           TicketPriority @default(medium)
+  status             TicketStatus   @default(open)
+  assignedTo         String?        @map("assigned_to") @db.VarChar(36)
+  resolution         String?        @db.Text
+  resolvedAt         DateTime?      @map("resolved_at")
+  satisfactionRating Int?           @map("satisfaction_rating")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  creator  User            @relation("TicketCreator", fields: [userId], references: [userId])
+  assignee User?           @relation("TicketAssignee", fields: [assignedTo], references: [userId])
+  comments TicketComment[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([assignedTo])
+  @@map("support_tickets")
+}
+
+/// 티켓 코멘트
+model TicketComment {
+  commentId  String   @id @map("comment_id") @db.VarChar(36)
+  ticketId   String   @map("ticket_id") @db.VarChar(36)
+  userId     String   @map("user_id") @db.VarChar(36)
+  content    String   @db.Text
+  isInternal Boolean  @default(false) @map("is_internal")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  ticket SupportTicket @relation(fields: [ticketId], references: [ticketId], onDelete: Cascade)
+  user   User          @relation(fields: [userId], references: [userId])
+
+  @@map("ticket_comments")
+}
+
+// ============================================================================
+// 11. 교재/단원 테이블
+// ============================================================================
+
+/// 교재
+model Textbook {
+  textbookId     String @id @map("textbook_id") @db.VarChar(20)
+  curiYearId     Int    @map("curi_year_id")
+  subjectMinorId String @map("subject_minor_id") @db.VarChar(10)
+  publisherId    Int?   @map("publisher_id")
+  authorId       Int?   @map("author_id")
+  title          String @db.VarChar(255)
+  year           Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  curriculumYear   CurriculumYear   @relation(fields: [curiYearId], references: [curiYearId])
+  subjectCodeMinor SubjectCodeMinor @relation(fields: [subjectMinorId], references: [subjectMinorId])
+  publisher        Publisher?       @relation(fields: [publisherId], references: [publisherId])
+  author           PublisherAuthor? @relation(fields: [authorId], references: [authorId])
+
+  units TextbookUnit[]
+
+  @@map("textbooks")
+}
+
+/// 교재 단원
+model TextbookUnit {
+  unitId       Int       @id @default(autoincrement()) @map("unit_id")
+  textbookId   String    @map("textbook_id") @db.VarChar(20)
+  unitLevel    UnitLevel @map("unit_level")
+  parentUnitId Int?      @map("parent_unit_id")
+  unitName     String    @map("unit_name") @db.VarChar(255)
+  unitOrder    Int       @map("unit_order")
+
+  // Relations
+  textbook   Textbook      @relation(fields: [textbookId], references: [textbookId])
+  parentUnit TextbookUnit? @relation("UnitHierarchy", fields: [parentUnitId], references: [unitId])
+  childUnits TextbookUnit[] @relation("UnitHierarchy")
+
+  @@index([textbookId])
+  @@index([parentUnitId])
+  @@map("textbook_units")
+}

@@ -1,0 +1,321 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./prisma-generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+model User {
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String?   @unique
+  username        String    @unique
+  passwordHash    String
+  nickname        String
+  role            UserRole
+  profileImageUrl String?
+  joinedAt        DateTime  @default(now())
+  deletedAt       DateTime?
+
+  sessions UserSession[]
+}
+
+model UserSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  user   User   @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  userId String @db.Uuid
+}
+
+model Question {
+  id                  String   @id @default(uuid()) @db.Uuid
+  htmlQuestionContent String // question prompt in html format
+  htmlSolutionContent String // detailed step-by-step solution in html format
+  answer              String // simplest form of answer; e.g. "10"
+  selections          String[] @default([])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  images     QuestionImage[]
+  labelPairs QuestionLabelPair[]
+}
+
+model QuestionImage {
+  id String @id @default(uuid()) @db.Uuid
+
+  question   Question @relation(fields: [questionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  questionId String   @db.Uuid
+
+  file   UploadedFile @relation(fields: [fileId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  fileId String       @db.Uuid
+
+  @@unique([questionId, fileId])
+}
+
+model QuestionLabel {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  labelPairs QuestionLabelPair[]
+}
+
+model QuestionLabelPair {
+  questionId String @db.Uuid
+  labelId    String @db.Uuid
+
+  question Question      @relation(fields: [questionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  label    QuestionLabel @relation(fields: [labelId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  @@id([questionId, labelId])
+}
+
+model ChatSession {
+  id           String @id @default(uuid()) @db.Uuid
+  eventCount   Int    @default(0)
+  messageCount Int    @default(0)
+
+  htmlQuestionContent String   @default("")
+  htmlSolutionContent String   @default("")
+  answer              String   @default("")
+  selections          String[] @default([])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  events   ChatSessionThreadEvent[]
+  messages ChatSessionThreadMessage[]
+}
+
+enum ChatSessionThreadEventKind {
+  ERROR
+  TASK
+  MESSAGE
+}
+
+enum ChatSessionThreadEventTaskPhase {
+  PRE
+  POST
+  ERROR
+}
+
+enum ChatSessionThreadEventMessageSpeaker {
+  USER
+  AI
+}
+
+model ChatSessionThreadEvent {
+  id        String                     @id @default(uuid()) @db.Uuid
+  order     Int
+  kind      ChatSessionThreadEventKind
+  createdAt DateTime                   @default(now())
+
+  // for ERROR kind
+  errorMessage String?
+
+  // for TASK kind
+  taskId    String?
+  taskType  String?
+  taskPhase String?
+  taskError String?
+
+  // for MESSAGE kind
+  messageSpeaker ChatSessionThreadEventMessageSpeaker?
+  contents       ChatSessionThreadEventMessageContent[]
+
+  session   ChatSession @relation(fields: [sessionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  sessionId String      @db.Uuid
+
+  @@unique([sessionId, order])
+}
+
+enum ChatSessionThreadEventMessageContentKind {
+  TEXT
+  IMAGE
+}
+
+model ChatSessionThreadEventMessageContent {
+  id    String                                   @id @default(uuid()) @db.Uuid
+  order Int
+  kind  ChatSessionThreadEventMessageContentKind
+
+  // for TEXT kind
+  encryptedText        String?
+  encryptedTextIv      String?
+  encryptedTextAuthTag String?
+
+  // for IMAGE kind
+  encryptedUrl        String?
+  encryptedUrlIv      String?
+  encryptedUrlAuthTag String?
+
+  event   ChatSessionThreadEvent @relation(fields: [eventId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  eventId String                 @db.Uuid
+
+  @@unique([eventId, order])
+}
+
+enum ChatSessionThreadMessageSpeaker {
+  USER
+  AI
+  TOOL
+}
+
+model ChatSessionThreadMessage {
+  id         String                          @id @default(uuid()) @db.Uuid
+  order      Int
+  speaker    ChatSessionThreadMessageSpeaker
+  messageId  String                          @unique
+  toolCallId String? // available only for TOOL speaker
+  toolName   String? // available only for TOOL speaker
+  createdAt  DateTime                        @default(now())
+
+  session   ChatSession @relation(fields: [sessionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  sessionId String      @db.Uuid
+
+  contents ChatSessionThreadMessageContent[]
+}
+
+enum ChatSessionThreadMessageContentType {
+  TEXT
+  IMAGE
+  TOOL_CALL
+}
+
+model ChatSessionThreadMessageContent {
+  id    String                              @id @default(uuid()) @db.Uuid
+  order Int
+  type  ChatSessionThreadMessageContentType
+
+  message   ChatSessionThreadMessage @relation(fields: [messageId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  messageId String                   @db.Uuid
+
+  text     ChatSessionThreadMessageContentText?
+  image    ChatSessionThreadMessageContentImage?
+  toolCall ChatSessionThreadMessageContentToolCall?
+
+  @@unique([messageId, order])
+}
+
+model ChatSessionThreadMessageContentText {
+  id                   String @id @default(uuid()) @db.Uuid
+  encryptedText        String
+  encryptedTextIv      String
+  encryptedTextAuthTag String
+
+  content   ChatSessionThreadMessageContent @relation(fields: [contentId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  contentId String                          @unique @db.Uuid
+}
+
+model ChatSessionThreadMessageContentImage {
+  id                  String @id @default(uuid()) @db.Uuid
+  encryptedUrl        String
+  encryptedUrlIv      String
+  encryptedUrlAuthTag String
+
+  content   ChatSessionThreadMessageContent @relation(fields: [contentId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  contentId String                          @unique @db.Uuid
+}
+
+model ChatSessionThreadMessageContentToolCall {
+  id                        String @id @default(uuid()) @db.Uuid
+  toolCallId                String
+  toolName                  String
+  encryptedArguments        String
+  encryptedArgumentsIv      String
+  encryptedArgumentsAuthTag String
+
+  content   ChatSessionThreadMessageContent @relation(fields: [contentId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  contentId String                          @unique @db.Uuid
+}
+
+model Subject {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent   Subject? @relation("ParentSubject", fields: [parentId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+  parentId String?  @db.Uuid
+
+  children  Subject[]  @relation("ParentSubject")
+  documents Document[]
+}
+
+model Document {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  description  String?
+  sectionCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subject   Subject? @relation(fields: [subjectId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+  subjectId String?  @db.Uuid
+
+  sections DocumentSection[]
+}
+
+model DocumentSection {
+  id           String   @id @default(uuid()) @db.Uuid
+  order        Int
+  title        String
+  description  String?
+  contentCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  document   Document @relation(fields: [documentId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  documentId String   @db.Uuid
+
+  contents DocumentSectionContent[]
+
+  @@unique([documentId, order])
+}
+
+enum DocumentSectionContentType {
+  TEXT
+  IMAGE
+}
+
+model DocumentSectionContent {
+  id       String                     @id @default(uuid()) @db.Uuid
+  order    Int
+  type     DocumentSectionContentType
+  text     String? // available only for TEXT type
+  imageUrl String? // available only for IMAGE type
+
+  section   DocumentSection @relation(fields: [sectionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  sectionId String          @db.Uuid
+
+  @@unique([sectionId, order])
+}
+
+model UploadedFile {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  mimeType    String
+  url         String
+  createdAt   DateTime @default(now())
+
+  questionImages QuestionImage[]
+}

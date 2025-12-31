@@ -1,0 +1,9 @@
+{
+  "name": "database-encryption-key-generator",
+  "version": "1.0.0",
+  "description": "Generates a random key for the database encryption",
+  "main": "index.js",
+  "scripts": {
+    "generate": "node index.js"
+  }
+}
