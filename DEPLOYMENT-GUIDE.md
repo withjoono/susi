@@ -79,43 +79,50 @@ Cloud Run 콘솔에서 환경 변수를 설정하세요:
 DB_HOST=/cloudsql/project-id:region:instance-name
 ```
 
-## CI/CD (GitHub Actions)
+## CI/CD (GitHub Actions) ✅
 
-`.github/workflows/deploy.yml`:
+GitHub Actions를 통한 자동 배포가 설정되어 있습니다.
 
-```yaml
-name: Deploy
+### 워크플로우 파일
+- `.github/workflows/deploy-frontend.yml`: 프론트엔드 자동 배포
+- `.github/workflows/deploy-backend.yml`: 백엔드 자동 배포
+- `.github/workflows/deploy-all.yml`: 전체 자동 배포 (변경 감지)
 
-on:
-  push:
-    branches:
-      - main
+### 배포 트리거
+- `main` 브랜치에 푸시 시 자동 배포
+- 수동 배포: GitHub Actions 탭에서 "Run workflow" 실행
 
-jobs:
-  deploy-frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-      - name: Build and Deploy Frontend
-        run: |
-          cd susi-front
-          npm ci
-          npm run build
-          firebase deploy --token ${{ secrets.FIREBASE_TOKEN }}
+### 필요한 GitHub Secrets
+1. **FIREBASE_SERVICE_ACCOUNT**: Firebase 배포용 서비스 계정 키
+2. **GCP_SA_KEY**: Cloud Run 배포용 GCP 서비스 계정 키
 
-  deploy-backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Deploy to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v1
-        with:
-          service: susi-backend
-          source: ./susi-back
-          region: asia-northeast3
+자세한 설정 방법: [.github/GITHUB_SECRETS_SETUP.md](.github/GITHUB_SECRETS_SETUP.md)
+
+### 배포 구성
+
+#### 프론트엔드 (Firebase Hosting)
+- 프로젝트: ts-front-479305
+- 타겟: susi
+- 도메인: https://susi.turtleschool.com
+
+#### 백엔드 (Cloud Run)
+- 프로젝트: ts-back-nest-479305
+- 서비스: susi-backend
+- 리전: asia-northeast3
+- 컨테이너 레지스트리: Artifact Registry
+- 이미지: asia-northeast3-docker.pkg.dev/ts-back-nest-479305/susi/backend
+
+### 배포 프로세스
+
+```mermaid
+graph LR
+    A[Git Push to main] --> B{변경 감지}
+    B -->|susi-front/** 변경| C[프론트엔드 빌드]
+    B -->|susi-back/** 변경| D[백엔드 빌드]
+    C --> E[Firebase Hosting 배포]
+    D --> F[Docker 이미지 빌드]
+    F --> G[Artifact Registry 푸시]
+    G --> H[Cloud Run 배포]
 ```
 
 ## 모니터링

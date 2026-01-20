@@ -1,0 +1,54 @@
+name: Deploy Frontend to Firebase
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'susi-front/**'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Firebase Hosting
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: susi-front
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: susi-front/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: ts-front-479305
+          entryPoint: susi-front
+          target: susi
+
+      - name: Deployment Summary
+        run: |
+          echo "🚀 Frontend deployed successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Deployment URL: https://susi.turtleschool.com" >> $GITHUB_STEP_SUMMARY
+          echo "⏰ Deployed at: $(date)" >> $GITHUB_STEP_SUMMARY

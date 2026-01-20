@@ -132,13 +132,53 @@ export function MyComponent() {
 
 ## 🌐 배포
 
+### 자동 배포 (GitHub Actions)
+
+이 프로젝트는 GitHub Actions를 통해 자동으로 배포됩니다.
+
+- **프론트엔드**: `main` 브랜치에 푸시 → Firebase Hosting 자동 배포
+- **백엔드**: `main` 브랜치에 푸시 → Cloud Run 자동 배포
+
+#### GitHub Secrets 설정 필요
+자동 배포를 활성화하려면 다음 Secrets를 GitHub 저장소에 추가해야 합니다:
+1. `FIREBASE_SERVICE_ACCOUNT`: Firebase 배포용 서비스 계정
+2. `GCP_SA_KEY`: Cloud Run 배포용 GCP 서비스 계정
+
+자세한 설정 방법은 [.github/GITHUB_SECRETS_SETUP.md](.github/GITHUB_SECRETS_SETUP.md)를 참조하세요.
+
 ### 프론트엔드 배포
-- **호스팅**: Firebase Hosting / Vercel
-- **도메인**: susi.geobukschool.com (예정)
+- **호스팅**: Firebase Hosting
+- **프로젝트 ID**: ts-front-479305
+- **도메인**: susi.turtleschool.com
 
 ### 백엔드 배포
-- **호스팅**: Google Cloud Run / App Engine
+- **호스팅**: Google Cloud Run
+- **프로젝트 ID**: ts-back-nest-479305
+- **서비스**: susi-backend
+- **리전**: asia-northeast3
 - **데이터베이스**: Cloud SQL (Hubs와 동일 인스턴스)
+
+### 수동 배포
+
+#### 프론트엔드 (Firebase Hosting)
+```bash
+cd susi-front
+npm run build
+firebase deploy
+```
+
+#### 백엔드 (Cloud Run)
+```bash
+cd susi-back
+gcloud run deploy susi-backend \
+  --source . \
+  --region asia-northeast3 \
+  --platform managed \
+  --allow-unauthenticated \
+  --memory 1Gi \
+  --cpu 1 \
+  --port 8080
+```
 
 ## 📝 개발 원칙
 
