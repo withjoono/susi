@@ -16,9 +16,11 @@ import { Request } from 'express';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(configService: ConfigService<AllConfigType>) {
+    const secret = configService.getOrThrow('auth', { infer: true }).secret;
     super({
       jwtFromRequest: JwtStrategy.extractJwtFromRequestOrCookie,
-      secretOrKey: configService.getOrThrow('auth', { infer: true }).secret,
+      // Secret must be base64-decoded to match jwt.service.ts signing
+      secretOrKey: Buffer.from(secret, 'base64'),
     });
   }
 

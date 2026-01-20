@@ -2,7 +2,7 @@ import { AxiosError, AxiosRequestConfig } from "axios";
 import { BaseResponse } from "./common-interface";
 import { nestApiClient } from "./api-client"; // Spring은 더 이상 사용하지 않음
 import { useMutation } from "@tanstack/react-query";
-import { getAccessToken, clearTokens } from "@/lib/api/token-manager";
+import { getAccessToken, setAccessToken, clearTokens } from "@/lib/api/token-manager";
 
 // API 클라이언트 타입 상수
 // Note: Spring 백엔드는 더 이상 사용하지 않음 (2024-12 NestJS로 완전 마이그레이션)
@@ -13,36 +13,17 @@ export const API_CLIENT = {
 
 export type ApiClientType = typeof API_CLIENT[keyof typeof API_CLIENT];
 
-// 토큰 함수들 - Zustand auth-storage 사용
+// 토큰 함수들 - token-manager를 통한 중앙 집중식 토큰 관리
 export const getAuthToken = () => {
-  const authStorage = localStorage.getItem('auth-storage');
-  if (authStorage) {
-    try {
-      const parsed = JSON.parse(authStorage);
-      return parsed?.state?.accessToken || null;
-    } catch (e) {
-      console.error('Failed to parse auth-storage:', e);
-      return null;
-    }
-  }
-  return null;
+  return getAccessToken();
 };
 
 export const setAuthToken = (token: string) => {
-  const currentStorage = JSON.parse(localStorage.getItem('auth-storage') || '{}');
-  const updatedStorage = {
-    ...currentStorage,
-    state: {
-      ...currentStorage.state,
-      accessToken: token,
-    }
-  };
-  localStorage.setItem('auth-storage', JSON.stringify(updatedStorage));
+  setAccessToken(token);
 };
 
 export const removeAuthToken = () => {
-  localStorage.removeItem('auth-storage');
-  clearTokens(); // 새로운 token-manager의 clearTokens도 호출
+  clearTokens();
 };
 
 export const handleApiError = <T = never>(e: unknown): BaseResponse<T> => {

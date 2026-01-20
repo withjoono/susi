@@ -49,16 +49,19 @@ const createNestApiInterceptors = (apiClientInstance) => {
   // 요청 인터셉터: Authorization 헤더 추가
   apiClientInstance.interceptors.request.use(
     (config) => {
-      // Zustand persist storage에서 accessToken 가져오기
-      const authStorage = localStorage.getItem('auth-storage');
-      let accessToken = null;
+      // 1. 먼저 직접 저장된 토큰 확인 (SSO 및 token-manager에서 사용)
+      let accessToken = localStorage.getItem('accessToken');
 
-      if (authStorage) {
-        try {
-          const parsed = JSON.parse(authStorage);
-          accessToken = parsed?.state?.accessToken;
-        } catch (e) {
-          console.error('Failed to parse auth-storage:', e);
+      // 2. 없으면 Zustand persist storage에서 확인 (fallback)
+      if (!accessToken) {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          try {
+            const parsed = JSON.parse(authStorage);
+            accessToken = parsed?.state?.accessToken;
+          } catch (e) {
+            console.error('Failed to parse auth-storage:', e);
+          }
         }
       }
 
@@ -108,16 +111,19 @@ const createNestApiInterceptors = (apiClientInstance) => {
         originalRequest._retry = true;
         isRefreshing = true;
 
-        // Zustand persist storage에서 refreshToken 가져오기
-        const authStorage = localStorage.getItem('auth-storage');
-        let refreshToken = null;
+        // 1. 먼저 직접 저장된 토큰 확인 (SSO 및 token-manager에서 사용)
+        let refreshToken = localStorage.getItem('refreshToken');
 
-        if (authStorage) {
-          try {
-            const parsed = JSON.parse(authStorage);
-            refreshToken = parsed?.state?.refreshToken;
-          } catch (e) {
-            console.error('Failed to parse auth-storage:', e);
+        // 2. 없으면 Zustand persist storage에서 확인 (fallback)
+        if (!refreshToken) {
+          const authStorage = localStorage.getItem('auth-storage');
+          if (authStorage) {
+            try {
+              const parsed = JSON.parse(authStorage);
+              refreshToken = parsed?.state?.refreshToken;
+            } catch (e) {
+              console.error('Failed to parse auth-storage:', e);
+            }
           }
         }
 
@@ -132,7 +138,11 @@ const createNestApiInterceptors = (apiClientInstance) => {
 
             const { accessToken, refreshToken: newRefreshToken } = response.data.data;
 
-            // 새 토큰을 auth-storage에 저장
+            // 1. 직접 저장 (SSO 및 token-manager에서 사용)
+            localStorage.setItem('accessToken', accessToken);
+            localStorage.setItem('refreshToken', newRefreshToken || refreshToken);
+
+            // 2. auth-storage에도 저장 (fallback 호환성)
             const currentStorage = JSON.parse(localStorage.getItem('auth-storage') || '{}');
             const updatedStorage = {
               ...currentStorage,
