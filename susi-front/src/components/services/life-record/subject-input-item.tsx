@@ -71,7 +71,11 @@ export const SubjectInputItem = React.memo(
           }}
         >
           <SelectTrigger className="min-w-[120px] max-w-[120px]">
-            <SelectValue placeholder="교과 선택" />
+            <SelectValue placeholder="교과 선택">
+              {subjectItem.mainSubjectCode 
+                ? (getMainSubjectByCode(subjectItem.mainSubjectCode)?.name || subjectItem.mainSubjectName || subjectItem.mainSubjectCode)
+                : "교과 선택"}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
@@ -96,7 +100,11 @@ export const SubjectInputItem = React.memo(
           }}
         >
           <SelectTrigger className="min-w-[120px] max-w-[120px]">
-            <SelectValue placeholder="과목 선택" />
+            <SelectValue placeholder="과목 선택">
+              {subjectItem.subjectCode 
+                ? (getSubjectByCode(subjectItem.subjectCode)?.name || subjectItem.subjectName || subjectItem.subjectCode)
+                : "과목 선택"}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>

@@ -117,8 +117,8 @@ export const useLifeRecord = () => {
         return newState;
       });
 
-      setSchoolrecordSelectSubjectList(
-        schoolRecord.selectSubjects.reduce<{
+      setSchoolrecordSelectSubjectList(() => {
+        const newState = schoolRecord.selectSubjects.reduce<{
           [key: string]: Omit<ISchoolRecordSelectSubject, "id">[];
         }>((acc, curr) => {
           if (curr?.grade) {
@@ -127,10 +127,20 @@ export const useLifeRecord = () => {
             acc[curr.grade].push(subjectWithoutId);
           }
           return acc;
-        }, {}),
-      );
-      setSchoolrecordSubjectLearningList(
-        schoolRecord.subjects.reduce<{
+        }, {});
+
+        // 누락된 학년에 대해 빈 배열 설정
+        ["1", "2", "3"].forEach((grade) => {
+          if (!newState[grade]) {
+            newState[grade] = [];
+          }
+        });
+
+        return newState;
+      });
+
+      setSchoolrecordSubjectLearningList(() => {
+        const newState = schoolRecord.subjects.reduce<{
           [key: string]: Omit<ISchoolRecordSubject, "id">[];
         }>((acc, curr) => {
           if (curr?.grade) {
@@ -139,8 +149,17 @@ export const useLifeRecord = () => {
             acc[curr.grade].push(subjectWithoutId);
           }
           return acc;
-        }, {}),
-      );
+        }, {});
+
+        // 누락된 학년에 대해 빈 배열 설정
+        ["1", "2", "3"].forEach((grade) => {
+          if (!newState[grade]) {
+            newState[grade] = [];
+          }
+        });
+
+        return newState;
+      });
     }
   }, [schoolRecord]);
 
