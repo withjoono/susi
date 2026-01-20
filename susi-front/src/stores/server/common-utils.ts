@@ -26,8 +26,17 @@ export const removeAuthToken = () => {
   clearTokens();
 };
 
-export const handleApiError = <T = never>(e: unknown): BaseResponse<T> => {
-  console.error("API Error:", e);
+export const handleApiError = <T = never>(e: unknown, suppressLog = false): BaseResponse<T> => {
+  // 생기부 관련 500 에러는 데이터가 없을 때 정상적으로 발생할 수 있으므로 로그 억제
+  const shouldSuppressLog = suppressLog || (
+    e instanceof AxiosError && 
+    e.response?.status === 500 &&
+    e.config?.url?.includes('/schoolrecord/')
+  );
+
+  if (!shouldSuppressLog) {
+    console.error("API Error:", e);
+  }
 
   if (e instanceof AxiosError) {
     return {
