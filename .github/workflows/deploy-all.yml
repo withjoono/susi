@@ -115,8 +115,7 @@ jobs:
             --min-instances 0 \
             --max-instances 10 \
             --port 8080 \
-            --set-env-vars NODE_ENV=production \
-            --update-env-vars PORT=8080
+            --set-env-vars NODE_ENV=production,PORT=8080
 
       - name: Deployment Summary
         run: |
