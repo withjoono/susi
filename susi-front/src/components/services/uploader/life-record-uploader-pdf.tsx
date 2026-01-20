@@ -5,7 +5,7 @@ import {
   FileUploaderItem,
   FileInput,
 } from "@/components/ui/file-upload";
-import { Paperclip, XIcon } from "lucide-react";
+import { Paperclip, XIcon, Loader2 } from "lucide-react";
 
 import pdfGuide from "@/assets/images/guide_pdf.png";
 import { toast } from "sonner";
@@ -87,7 +87,17 @@ const LifeRecordUploaderPDF = ({
   };
 
   return (
-    <div className={cn("space-y-8 rounded-md border p-4", className)}>
+    <div className={cn("space-y-8 rounded-md border p-4 relative", className)}>
+      {/* 로딩 오버레이 */}
+      {isLoading && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm rounded-md">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="mt-4 text-lg font-semibold">PDF 파싱 중입니다...</p>
+          <p className="mt-2 text-sm text-muted-foreground">AI가 생기부를 분석하고 있습니다</p>
+          <p className="mt-1 text-xs text-muted-foreground">최대 5분 정도 걸릴 수 있습니다</p>
+        </div>
+      )}
+      
       <FileUploader
         value={files}
         onValueChange={setFiles}
@@ -124,7 +134,14 @@ const LifeRecordUploaderPDF = ({
         disabled={!files || !files[0] || isLoading}
         className="w-full"
       >
-        저장하기
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            파싱 중...
+          </>
+        ) : (
+          "저장하기"
+        )}
       </Button>
 
       <Dialog>

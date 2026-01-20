@@ -68,11 +68,11 @@ export const useLifeRecordUpload = () => {
         }
       } else if (type === "pdf") {
         // PDF는 백엔드에서 AI 파싱 + 저장을 한 번에 처리
-        // AI 파싱이 오래 걸릴 수 있으므로 타임아웃을 2분으로 설정
-        toast.info("PDF 파싱 중입니다. 잠시만 기다려주세요...");
+        // AI 파싱이 오래 걸릴 수 있으므로 타임아웃을 5분으로 설정
+        toast.info("PDF 파싱 중입니다. 최대 5분 정도 걸릴 수 있습니다...");
         const res = await authClient.post("/schoolrecord/parse/pdf", formData, {
           headers: { "Content-Type": "multipart/form-data" },
-          timeout: 120000, // 2분 타임아웃 (AI 파싱이 오래 걸릴 수 있음)
+          timeout: 300000, // 5분 타임아웃 (AI 파싱이 오래 걸릴 수 있음)
         });
         if (res.data) {
           toast.success("생활기록부(PDF) 업로드에 성공하였습니다.");
@@ -81,8 +81,17 @@ export const useLifeRecordUpload = () => {
       }
     } catch (e: unknown) {
       console.error("[useLifeRecordUpload] 업로드 실패:", e);
-      const error = e as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || "파일 업로드에 실패했습니다.");
+      const error = e as { response?: { data?: { message?: string } }, code?: string };
+      
+      // 타임아웃 에러인 경우 특별한 메시지 표시
+      if (error.code === "ECONNABORTED") {
+        toast.error(
+          "파일 처리 시간이 초과되었습니다. 파일 크기가 크거나 서버가 혼잡할 수 있습니다. 잠시 후 다시 시도해주세요.",
+          { duration: 5000 }
+        );
+      } else {
+        toast.error(error.response?.data?.message || "파일 업로드에 실패했습니다.");
+      }
     }
   };
 

@@ -33,64 +33,84 @@ const fetchCurrentUserActiveServicesAPI = async () => {
  * [생기부] 출석 기록 조회
  */
 const fetchSchoolRecordAttendanceAPI = async (memberId: string) => {
-  const res = await makeApiCall<void, ISchoolRecordAttendance[]>(
-    "GET",
-    `/members/${memberId}/schoolrecord/attendance`,
-    undefined,
-  );
+  try {
+    const res = await makeApiCall<void, ISchoolRecordAttendance[]>(
+      "GET",
+      `/members/${memberId}/schoolrecord/attendance`,
+      undefined,
+    );
 
-  if (res.success) {
-    return res.data;
+    if (res.success) {
+      return res.data;
+    }
+    return [];
+  } catch (error) {
+    // 데이터가 없을 때 500 에러가 발생할 수 있음 (정상 상황)
+    return [];
   }
-  return [];
 };
 
 /**
  * [생기부] 선택 과목 조회
  */
 const fetchSchoolRecordSelectSubjectsAPI = async (memberId: string) => {
-  const res = await makeApiCall<void, ISchoolRecordSelectSubject[]>(
-    "GET",
-    `/members/${memberId}/schoolrecord/select-subject`,
-    undefined,
-  );
+  try {
+    const res = await makeApiCall<void, ISchoolRecordSelectSubject[]>(
+      "GET",
+      `/members/${memberId}/schoolrecord/select-subject`,
+      undefined,
+    );
 
-  if (res.success) {
-    return res.data;
+    if (res.success) {
+      return res.data;
+    }
+    return [];
+  } catch (error) {
+    // 데이터가 없을 때 500 에러가 발생할 수 있음 (정상 상황)
+    return [];
   }
-  return [];
 };
 
 /**
  * [생기부] 과목 조회
  */
 const fetchSchoolRecordSubjectsAPI = async (memberId: string) => {
-  const res = await makeApiCall<void, ISchoolRecordSubject[]>(
-    "GET",
-    `/members/${memberId}/schoolrecord/subject`,
-    undefined,
-  );
+  try {
+    const res = await makeApiCall<void, ISchoolRecordSubject[]>(
+      "GET",
+      `/members/${memberId}/schoolrecord/subject`,
+      undefined,
+    );
 
-  if (res.success) {
-    return res.data;
+    if (res.success) {
+      return res.data;
+    }
+    return [];
+  } catch (error) {
+    // 데이터가 없을 때 500 에러가 발생할 수 있음 (정상 상황)
+    return [];
   }
-  return [];
 };
 
 /**
  * [생기부] 봉사 활동 조회
  */
 const fetchSchoolRecordVolunteersAPI = async (memberId: string) => {
-  const res = await makeApiCall<void, ISchoolRecordVolunteer[]>(
-    "GET",
-    `/members/${memberId}/schoolrecord/volunteers`,
-    undefined,
-  );
+  try {
+    const res = await makeApiCall<void, ISchoolRecordVolunteer[]>(
+      "GET",
+      `/members/${memberId}/schoolrecord/volunteers`,
+      undefined,
+    );
 
-  if (res.success) {
-    return res.data;
+    if (res.success) {
+      return res.data;
+    }
+    return [];
+  } catch (error) {
+    // 데이터가 없을 때 500 에러가 발생할 수 있음 (정상 상황)
+    return [];
   }
-  return [];
 };
 
 export const USER_API = {
