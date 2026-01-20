@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "ts-front-479305",
+    "target": "susi",
     "public": "dist",
     "ignore": [
       "firebase.json",
