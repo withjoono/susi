@@ -89,6 +89,16 @@ const createNestApiInterceptors = (apiClientInstance) => {
     },
     async (error) => {
       const originalRequest = error.config;
+      
+      // 생기부 관련 500 에러는 데이터가 없을 때 정상적으로 발생 (로그 억제)
+      const isSchoolRecordError = 
+        error.response?.status === 500 && 
+        originalRequest?.url?.includes('/schoolrecord/');
+      
+      if (!isSchoolRecordError) {
+        // 생기부 관련이 아닌 에러만 콘솔에 출력
+        console.error('API Error:', error);
+      }
 
       // 공개 API에서 401 에러 발생 시 리다이렉트하지 않음
       if (error.response?.status === 401 && isPublicEndpoint(originalRequest?.url)) {
