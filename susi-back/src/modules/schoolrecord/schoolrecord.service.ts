@@ -95,27 +95,47 @@ export class SchoolRecordService {
     return [files, total];
   }
   async getAttendanceDetails(memberId: number): Promise<SchoolRecordAttendanceDetailEntity[]> {
-    return await this.attendanceRepository.find({
-      where: { member: { id: memberId } },
-    });
+    try {
+      return await this.attendanceRepository.find({
+        where: { member: { id: memberId } },
+      });
+    } catch (error) {
+      // 데이터가 없거나 에러 발생 시 빈 배열 반환
+      return [];
+    }
   }
 
   async getSelectSubjects(memberId: number): Promise<SchoolRecordSelectSubjectEntity[]> {
-    return await this.selectSubjectRepository.find({
-      where: { member: { id: memberId } },
-    });
+    try {
+      return await this.selectSubjectRepository.find({
+        where: { member: { id: memberId } },
+      });
+    } catch (error) {
+      // 데이터가 없거나 에러 발생 시 빈 배열 반환
+      return [];
+    }
   }
 
   async getSubjectLearnings(memberId: number): Promise<SchoolRecordSubjectLearningEntity[]> {
-    return await this.subjectLearningRepository.find({
-      where: { member: { id: memberId } },
-    });
+    try {
+      return await this.subjectLearningRepository.find({
+        where: { member: { id: memberId } },
+      });
+    } catch (error) {
+      // 데이터가 없거나 에러 발생 시 빈 배열 반환
+      return [];
+    }
   }
 
   async getVolunteers(memberId: number): Promise<SchoolRecordVolunteerEntity[]> {
-    return await this.volunteerRepository.find({
-      where: { member: { id: memberId } },
-    });
+    try {
+      return await this.volunteerRepository.find({
+        where: { member: { id: memberId } },
+      });
+    } catch (error) {
+      // 데이터가 없거나 에러 발생 시 빈 배열 반환
+      return [];
+    }
   }
 
   async getSportArts(memberId: number): Promise<SchoolrecordSportsArtEntity[]> {
