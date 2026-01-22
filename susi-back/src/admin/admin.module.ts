@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { NonsulModule } from 'src/modules/nonsul/nonsul.module';
 import { SusiModule } from 'src/modules/susi/susi.module';
+import { CommonModule } from 'src/common/common.module';
+import { MembersModule } from 'src/modules/members/members.module';
 import { AdminSusiSubjectService } from './services/admin-susi-subject.service';
 import { AdminSusiSubjectController } from './controllers/admin-susi-subject.controller';
 import { AdminNonsulController } from './controllers/admin-nonsul.controller';
@@ -29,9 +31,14 @@ import { PayServiceProductEntity } from 'src/database/entities/pay/pay-service-p
 import { PayCouponEntity } from 'src/database/entities/pay/pay-coupon.entity';
 import { AdminProductManagementController } from './controllers/admin-product-management.controller';
 import { AdminProductManagementService } from './services/admin-product-management.service';
+import { AdminSusiFormulaController } from './controllers/admin-susi-formula.controller';
+import { AdminSusiFormulaService } from './services/admin-susi-formula.service';
+import { SusiCalculationFormulaEntity } from 'src/database/entities/susi/susi-calculation-formula.entity';
 
 @Module({
   imports: [
+    CommonModule,
+    MembersModule,
     NonsulModule,
     SusiModule,
     TypeOrmModule.forFeature([
@@ -44,6 +51,7 @@ import { AdminProductManagementService } from './services/admin-product-manageme
       PayServiceEntity,
       PayServiceProductEntity,
       PayCouponEntity,
+      SusiCalculationFormulaEntity,
     ]),
   ],
   controllers: [
@@ -56,6 +64,7 @@ import { AdminProductManagementService } from './services/admin-product-manageme
     AdminPaymentController,
     AdminMemberController,
     AdminProductManagementController,
+    AdminSusiFormulaController,
   ],
   providers: [
     AdminNonsulService,
@@ -67,6 +76,7 @@ import { AdminProductManagementService } from './services/admin-product-manageme
     AdminPaymentService,
     AdminMemberService,
     AdminProductManagementService,
+    AdminSusiFormulaService,
   ],
 })
 export class AdminModule {}

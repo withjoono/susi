@@ -12,6 +12,7 @@ import { MentoringModule } from 'src/modules/mentoring/mentoring.module';
 import { LoginAttemptService } from './services/login-attempt.service';
 import { CookieService } from './services/cookie.service';
 import { OAuthClientService } from './services/oauth-client.service';
+import { HubPermissionGuard } from './guards/hub-permission.guard';
 
 @Module({
   imports: [
@@ -29,8 +30,9 @@ import { OAuthClientService } from './services/oauth-client.service';
     LoginAttemptService,
     CookieService,
     OAuthClientService,
+    HubPermissionGuard,
   ],
   controllers: [AuthController],
-  exports: [LoginAttemptService, CookieService, OAuthClientService],
+  exports: [LoginAttemptService, CookieService, OAuthClientService, HubPermissionGuard],
 })
 export class AuthModule {}

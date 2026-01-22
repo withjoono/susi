@@ -84,6 +84,19 @@ import { ApplicationRate } from '../modules/application-rate/entities/applicatio
 import { ApplicationRateHistory } from '../modules/application-rate/entities/application-rate-history.entity';
 import { SusiRecruitmentUnitEntity } from './entities/susi/susi-recruitment-unit.entity';
 import { SusiUnitCategoryEntity } from './entities/susi/susi-unit-category.entity';
+import { SusiCalculationFormulaEntity } from './entities/susi/susi-calculation-formula.entity';
+import { SusiUserCalculatedScoreEntity } from './entities/susi/susi-user-calculated-score.entity';
+import { SusiUserRecruitmentScoreEntity } from './entities/susi/susi-user-recruitment-score.entity';
+import { SusiCategorySubjectNecessityEntity } from './entities/susi/susi-category-subject-necessity.entity';
+import { SusiSubjectCodeEntity } from './entities/susi/susi-subject-code.entity';
+
+// 2027학년도 수시 테이블
+import { SusiKyokwaCutEntity } from './entities/susi/susi-kyokwa-cut.entity';
+import { SusiKyokwaRecruitmentEntity } from './entities/susi/susi-kyokwa-recruitment.entity';
+import { SusiKyokwaSpecialEntity } from './entities/susi/susi-kyokwa-special.entity';
+import { SusiJonghapIpkyulEntity } from './entities/susi/susi-jonghap-ipkyul.entity';
+import { SusiJonghapRecruitmentEntity } from './entities/susi/susi-jonghap-recruitment.entity';
+import { SusiJonghapSpecialEntity } from './entities/susi/susi-jonghap-special.entity';
 
 @Injectable()
 export class TypeOrmConfigService implements TypeOrmOptionsFactory {
@@ -226,6 +239,23 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
         // 수시 통합 테이블 (새 플랫 구조)
         SusiRecruitmentUnitEntity, // 수시 모집단위 통합 테이블
         SusiUnitCategoryEntity, // 수시 모집단위 계열 분류
+
+        // 수시 교과전형 환산점수 관련
+        SusiCalculationFormulaEntity, // 수시 교과전형 환산 공식
+        SusiUserCalculatedScoreEntity, // 수시 대학별 환산점수
+        SusiUserRecruitmentScoreEntity, // 수시 모집단위별 환산점수
+
+        // 수시 계열별 과목 관련
+        SusiCategorySubjectNecessityEntity, // 계열별 필수/권장 과목
+        SusiSubjectCodeEntity, // 2015 개정 교과/과목 코드
+
+        // 2027학년도 수시 테이블
+        SusiKyokwaCutEntity, // 교과전형 입시결과
+        SusiKyokwaRecruitmentEntity, // 교과전형 세부내역
+        SusiKyokwaSpecialEntity, // 교과전형 특별전형
+        SusiJonghapIpkyulEntity, // 종합전형 입시결과
+        SusiJonghapRecruitmentEntity, // 종합전형 세부내역
+        SusiJonghapSpecialEntity, // 종합전형 특별전형
       ],
     } as TypeOrmModuleOptions;
   }

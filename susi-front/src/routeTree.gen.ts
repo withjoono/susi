@@ -11,6 +11,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as JRouteImport } from './routes/j'
 import { Route as H4RouteImport } from './routes/h4'
 import { Route as H3RouteImport } from './routes/h3'
@@ -278,6 +279,11 @@ const OfficerRoute = OfficerRouteImport.update({
 const EvaluationRoute = EvaluationRouteImport.update({
   id: '/evaluation',
   path: '/evaluation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JRoute = JRouteImport.update({
@@ -1168,6 +1174,7 @@ export interface FileRoutesByFullPath {
   '/h3': typeof H3Route
   '/h4': typeof H4Route
   '/j': typeof JRoute
+  '/pricing': typeof PricingRoute
   '/members/my-group': typeof MembersMyGroupLayoutRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
@@ -1291,6 +1298,7 @@ export interface FileRoutesByTo {
   '/h3': typeof H3Route
   '/h4': typeof H4Route
   '/j': typeof JRoute
+  '/pricing': typeof PricingRoute
   '/members/my-group': typeof MembersMyGroupLayoutIndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
@@ -1419,6 +1427,7 @@ export interface FileRoutesById {
   '/h3': typeof H3Route
   '/h4': typeof H4Route
   '/j': typeof JRoute
+  '/pricing': typeof PricingRoute
   '/members/my-group': typeof MembersMyGroupRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
@@ -1558,6 +1567,7 @@ export interface FileRouteTypes {
     | '/h3'
     | '/h4'
     | '/j'
+    | '/pricing'
     | '/members/my-group'
     | '/auth/login'
     | '/auth/register'
@@ -1681,6 +1691,7 @@ export interface FileRouteTypes {
     | '/h3'
     | '/h4'
     | '/j'
+    | '/pricing'
     | '/members/my-group'
     | '/auth/login'
     | '/auth/register'
@@ -1808,6 +1819,7 @@ export interface FileRouteTypes {
     | '/h3'
     | '/h4'
     | '/j'
+    | '/pricing'
     | '/members/my-group'
     | '/auth/login'
     | '/auth/register'
@@ -1946,6 +1958,7 @@ export interface RootRouteChildren {
   H3Route: typeof H3Route
   H4Route: typeof H4Route
   JRoute: typeof JRoute
+  PricingRoute: typeof PricingRoute
   MembersMyGroupRouteRoute: typeof MembersMyGroupRouteRouteWithChildren
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
@@ -2010,6 +2023,13 @@ declare module '@tanstack/react-router' {
       path: '/evaluation'
       fullPath: '/evaluation'
       preLoaderRoute: typeof EvaluationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/j': {
@@ -3301,6 +3321,7 @@ const rootRouteChildren: RootRouteChildren = {
   H3Route: H3Route,
   H4Route: H4Route,
   JRoute: JRoute,
+  PricingRoute: PricingRoute,
   MembersMyGroupRouteRoute: MembersMyGroupRouteRouteWithChildren,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,

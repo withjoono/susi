@@ -150,9 +150,10 @@ export function LoginFormSimple({ className }: Props) {
             variant="outline"
             className="w-full"
             onClick={() => {
-              // Susi 백엔드의 OAuth 로그인 엔드포인트로 리다이렉트
+              // Susi 백엔드의 OAuth 로그인 엔드포인트로 직접 리다이렉트
               // 백엔드에서 Hub 인증 페이지로 다시 리다이렉트됨
-              window.location.href = '/api-susi/auth/oauth/login';
+              // 개발환경: localhost:4001 직접 호출 (Vite 프록시 우회)
+              window.location.href = 'http://localhost:4001/auth/oauth/login';
             }}
             disabled={loginWithEmail.isPending}
           >
