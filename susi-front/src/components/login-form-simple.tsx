@@ -1,189 +1,50 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Button } from "./custom/button";
-import { loginFormSchema } from "@/lib/validations/auth";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { useLoginWithEmail } from "@/stores/server/features/auth/mutations";
-import { useQueryClient } from "@tanstack/react-query";
-import { meQueryKeys } from "@/stores/server/features/me/queries";
-import { USER_API } from "@/stores/server/features/me/apis";
-import { generateSSOUrl, isSSOService } from "@/lib/utils/sso-helper";
 
 interface Props {
   className?: string;
 }
 
 export function LoginFormSimple({ className }: Props) {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const loginWithEmail = useLoginWithEmail();
-
-  // URL에서 redirect_uri 파라미터 확인 (SSO 리디렉트용)
-  const redirectUri = new URLSearchParams(window.location.search).get('redirect_uri');
-
-  const form = useForm<z.infer<typeof loginFormSchema>>({
-    resolver: zodResolver(loginFormSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  async function onSubmit(values: z.infer<typeof loginFormSchema>) {
-    if (loginWithEmail.isPending) return;
-    const result = await loginWithEmail.mutateAsync({
-      email: values.email,
-      password: values.password,
-    });
-
-    if (result.success) {
-      toast.success("환영합니다. 거북스쿨입니다. 😄");
-
-      // SSO 리디렉트: redirect_uri가 있고 SSO 서비스이면 토큰과 함께 외부로 리디렉트
-      if (redirectUri && isSSOService(redirectUri)) {
-        const ssoUrl = generateSSOUrl(redirectUri);
-        window.location.href = ssoUrl;
-        return;
-      }
-
-      // 사용자 정보를 가져와서 memberType에 따라 리다이렉트
-      // fetchQuery를 사용하여 캐시 업데이트와 데이터 조회를 한 번에 처리 (중복 API 호출 방지)
-      try {
-        const user = await queryClient.fetchQuery({
-          queryKey: meQueryKeys.all,
-          queryFn: USER_API.fetchCurrentUserAPI,
-          staleTime: 0, // 강제로 새로 가져오기
-        });
-        if (user?.memberType === "teacher") {
-          navigate({ to: "/mentor" });
-        } else if (user?.memberType === "parent") {
-          navigate({ to: "/family" });
-        } else {
-          navigate({ to: "/" });
-        }
-      } catch {
-        navigate({ to: "/" });
-      }
-    } else {
-      toast.error(result.error);
-    }
-  }
-
   return (
-    <Form {...form}>
-      <div className={cn("space-y-2", className)}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>이메일</FormLabel>
-                  <FormControl>
-                    <Input placeholder="이메일 주소" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>패스워드</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      autoComplete="off"
-                      placeholder="패스워드"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <Button
-            type="submit"
-            className="w-full"
-            loading={loginWithEmail.isPending}
-          >
-            로그인
-          </Button>
-        </form>
-        {/* TODO: 소셜 로그인 기능 복구 시 아래 주석 해제 */}
-        {/* <div className="space-y-2 pt-4">
-          <GoogleLoginButton isPending={loginWithEmail.isPending} />
-          <NaverLoginButton isPending={loginWithEmail.isPending} />
-        </div> */}
+    <div className={cn("space-y-4", className)}>
+      {/* Hub OAuth SSO 로그인 */}
+      <Button
+        type="button"
+        className="w-full"
+        onClick={() => {
+          // Susi 백엔드의 OAuth 로그인 엔드포인트로 리다이렉트
+          // 백엔드에서 Hub 인증 페이지로 다시 리다이렉트되어 SSO 인증 진행
+          // 개발환경: localhost:4001 직접 호출 (Vite 프록시 우회)
+          window.location.href = 'http://localhost:4001/auth/oauth/login';
+        }}
+      >
+        <svg
+          className="mr-2 h-4 w-4"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+          <polyline points="10 17 15 12 10 7" />
+          <line x1="15" y1="12" x2="3" y2="12" />
+        </svg>
+        로그인
+      </Button>
 
-        {/* Hub OAuth 로그인 */}
-        <div className="space-y-2 pt-4">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-muted-foreground">
-                또는
-              </span>
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={() => {
-              // Susi 백엔드의 OAuth 로그인 엔드포인트로 직접 리다이렉트
-              // 백엔드에서 Hub 인증 페이지로 다시 리다이렉트됨
-              // 개발환경: localhost:4001 직접 호출 (Vite 프록시 우회)
-              window.location.href = 'http://localhost:4001/auth/oauth/login';
-            }}
-            disabled={loginWithEmail.isPending}
-          >
-            <svg
-              className="mr-2 h-4 w-4"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-              <polyline points="10 17 15 12 10 7" />
-              <line x1="15" y1="12" x2="3" y2="12" />
-            </svg>
-            Hub 계정으로 로그인
-          </Button>
-        </div>
-
-        <div className="flex justify-center pt-4">
-          <Link
-            to="/auth/register"
-            className="text-sm text-blue-500 hover:underline"
-          >
-            회원가입
-          </Link>
-        </div>
+      <div className="flex justify-center pt-2">
+        <Link
+          to="/auth/register"
+          className="text-sm text-blue-500 hover:underline"
+        >
+          회원가입
+        </Link>
       </div>
-    </Form>
+    </div>
   );
 }
