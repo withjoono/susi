@@ -119,6 +119,14 @@ export class OAuthClientService {
       );
 
       this.logger.info('[OAuth] 토큰 교환 성공');
+      this.logger.info(`[OAuth] 응답 데이터: ${JSON.stringify(response.data)}`);
+
+      // id_token이 없는 경우 처리
+      if (!response.data.id_token) {
+        this.logger.error('[OAuth] id_token이 응답에 없습니다!');
+        throw new UnauthorizedException('ID Token이 반환되지 않았습니다.');
+      }
+
       return response.data;
     } catch (error) {
       this.logger.error(
@@ -136,7 +144,13 @@ export class OAuthClientService {
    * @returns 디코딩된 payload
    */
   verifyIdToken(idToken: string): IdTokenPayload {
+    this.logger.info(`[OAuth] ID Token 검증 시작: ${idToken ? idToken.substring(0, 50) + '...' : 'undefined'}`);
+
     try {
+      if (!idToken) {
+        throw new Error('ID Token이 undefined입니다.');
+      }
+
       // JWT는 base64url 인코딩된 3개 부분으로 구성: header.payload.signature
       const parts = idToken.split('.');
       if (parts.length !== 3) {

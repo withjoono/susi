@@ -37,21 +37,36 @@ import { CurrentMemberId } from './decorators/current-member_id.decorator';
 import { MemberEntity } from 'src/database/entities/member/member.entity';
 import { CookieService } from './services/cookie.service';
 import { OAuthClientService } from './services/oauth-client.service';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
-import { Inject } from '@nestjs/common';
+import { Inject, OnModuleInit } from '@nestjs/common';
+import Redis from 'ioredis';
 
 @ApiTags('auth')
 @Controller('auth')
-export class AuthController {
+export class AuthController implements OnModuleInit {
+  private redis: Redis;
+
   constructor(
     private readonly service: AuthService,
     private readonly smsService: SmsService,
     private readonly membersService: MembersService,
     private readonly cookieService: CookieService,
     private readonly oauthClientService: OAuthClientService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+
+  onModuleInit() {
+    // OAuth state 저장을 위한 Redis 클라이언트 초기화
+    this.redis = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      keyPrefix: 'susi-oauth:',
+    });
+    this.redis.on('connect', () => {
+      console.log('✅ [OAuth] Redis 클라이언트 연결됨');
+    });
+    this.redis.on('error', (err) => {
+      console.error('❌ [OAuth] Redis 연결 오류:', err.message);
+    });
+  }
 
   @ApiOperation({
     summary: '내 정보 조회',
@@ -551,13 +566,13 @@ export class AuthController {
     // CSRF 방지용 state 생성
     const state = Math.random().toString(36).substring(2, 15);
 
-    // Code Verifier와 State를 캐시에 임시 저장 (5분)
-    const cacheKey = `oauth_verifier:${state}`;
-    await this.cacheManager.set(cacheKey, codeVerifier, 300000);
-    console.log(`✅ [OAuth Login] Redis에 저장: ${cacheKey} = ${codeVerifier.substring(0, 20)}...`);
+    // Code Verifier를 Redis에 직접 저장 (5분 TTL)
+    const redisKey = `verifier:${state}`;
+    await this.redis.setex(redisKey, 300, codeVerifier); // 300초 = 5분
+    console.log(`✅ [OAuth Login] Redis에 저장: ${redisKey} = ${codeVerifier.substring(0, 20)}...`);
 
     // 저장 확인
-    const savedValue = await this.cacheManager.get(cacheKey);
+    const savedValue = await this.redis.get(redisKey);
     console.log(`🔍 [OAuth Login] 저장 즉시 조회: ${savedValue ? '성공' : '실패'}`);
 
     // Hub 인증 페이지로 리다이렉트
@@ -612,42 +627,32 @@ export class AuthController {
 
     console.log(`📥 [OAuth Callback] 받은 state: ${state}`);
 
-    // 현재 Redis의 모든 키 확인 (디버깅용)
-    const allKeys = await this.cacheManager.store.keys('oauth_verifier:*');
-    console.log(`🔑 [OAuth Callback] Redis에 있는 oauth_verifier 키들:`, allKeys);
-
-    // 캐시에서 Code Verifier 조회
-    const cacheKey = `oauth_verifier:${state}`;
-    const codeVerifier = await this.cacheManager.get<string>(cacheKey);
-    console.log(`🔍 [OAuth Callback] ${cacheKey} 조회 결과: ${codeVerifier ? '성공' : '실패'}`);
+    // Redis에서 Code Verifier를 원자적으로 조회 및 삭제 (GETDEL)
+    // 이렇게 하면 중복 요청 시 첫 번째 요청만 verifier를 얻을 수 있음
+    const redisKey = `verifier:${state}`;
+    const codeVerifier = await this.redis.getdel(redisKey);
+    console.log(`🔍 [OAuth Callback] ${redisKey} GETDEL 결과: ${codeVerifier ? '성공' : '실패 (이미 사용됨 또는 만료)'}`);
 
     if (!codeVerifier) {
       throw new UnauthorizedException('유효하지 않거나 만료된 state입니다.');
     }
 
-    // 사용한 Code Verifier 삭제
-    await this.cacheManager.del(cacheKey);
-    console.log(`🗑️ [OAuth Callback] ${cacheKey} 삭제 완료`);
-
     // Authorization Code를 Access Token으로 교환
     const tokens = await this.oauthClientService.exchangeCodeForTokens(code, codeVerifier);
 
-    // ID Token 검증
+    // ID Token 검증 - ID Token에 이미 email, nickname, phone 정보가 포함되어 있음
     const idTokenPayload = this.oauthClientService.verifyIdToken(tokens.id_token);
 
-    // Hub 사용자 정보 조회
-    const hubUserInfo = await this.oauthClientService.getUserInfo(tokens.access_token);
-
     // Susi에 해당 사용자가 있는지 확인 (이메일 기반)
-    let member = await this.membersService.findOneByEmail(hubUserInfo.data.email);
+    let member = await this.membersService.findOneByEmail(idTokenPayload.email);
 
     if (!member) {
       // 신규 사용자인 경우 자동 회원가입 처리
-      // Hub에서 받은 정보로 계정 생성
+      // ID Token에서 받은 정보로 계정 생성
       member = await this.membersService.createMemberFromOAuth({
-        email: hubUserInfo.data.email,
-        nickname: hubUserInfo.data.nickname || idTokenPayload.nickname,
-        phone: hubUserInfo.data.phone || idTokenPayload.phone,
+        email: idTokenPayload.email,
+        nickname: idTokenPayload.nickname,
+        phone: idTokenPayload.phone,
         hubMemberId: idTokenPayload.sub, // Hub의 memberId 저장
       });
     }
