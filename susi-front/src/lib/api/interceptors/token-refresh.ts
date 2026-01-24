@@ -12,6 +12,7 @@ import {
   setAccessToken,
 } from '../token-manager';
 import { ERROR_CODES } from '../../errors/error-codes';
+import { redirectToHubLogin } from '../../auth/redirect-to-login';
 
 /**
  * 토큰 갱신 API 호출
@@ -43,17 +44,17 @@ const refreshAccessToken = async (): Promise<string | null> => {
 };
 
 /**
- * 로그아웃 처리 (토큰 제거 + 로그인 페이지 이동)
+ * 로그아웃 처리 (토큰 제거 + Hub OAuth 로그인으로 리다이렉트)
  */
 const handleLogout = () => {
-  // 인증 페이지(/auth/*)에서는 로그아웃 처리하지 않음
-  // 로그인 페이지 접근 시 자동 로그아웃 방지
-  if (window.location.pathname.startsWith('/auth/')) {
+  // OAuth 콜백 페이지에서는 처리하지 않음 (무한 루프 방지)
+  if (window.location.pathname.includes('/auth/oauth/callback')) {
     return;
   }
 
   clearTokens();
-  window.location.href = '/auth/login';
+  // Hub OAuth 로그인으로 바로 리다이렉트 (별도 로그인 페이지 없음)
+  redirectToHubLogin();
 };
 
 /**

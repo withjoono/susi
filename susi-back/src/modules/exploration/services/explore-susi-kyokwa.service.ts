@@ -1,22 +1,32 @@
 import { Injectable, Inject, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
-import { AdmissionEntity } from 'src/database/entities/core/admission.entity';
-import { RecruitmentUnitEntity } from 'src/database/entities/core/recruitment-unit.entity';
+import { SusiKyokwaRecruitmentEntity } from 'src/database/entities/susi/susi-kyokwa-recruitment.entity';
+import { SusiKyokwaCutEntity } from 'src/database/entities/susi/susi-kyokwa-cut.entity';
 
+/**
+ * 수시 교과전형 탐색 서비스
+ * - susi_kyokwa_recruitment 및 susi_kyokwa_cut 테이블을 직접 조회
+ * - 복잡한 관계 탐색 로직 제거, ida_id로 조인
+ * - 프론트엔드 탐색 페이지의 요구사항에 맞춰 데이터 반환
+ */
 @Injectable()
 export class ExploreSusiKyokwaService {
   private readonly logger = new Logger(ExploreSusiKyokwaService.name);
 
   constructor(
-    @InjectRepository(AdmissionEntity)
-    private readonly admissionRepository: Repository<AdmissionEntity>,
-    @InjectRepository(RecruitmentUnitEntity)
-    private readonly recruitmentUnitRepository: Repository<RecruitmentUnitEntity>,
+    @InjectRepository(SusiKyokwaRecruitmentEntity)
+    private readonly susiKyokwaRecruitmentRepository: Repository<SusiKyokwaRecruitmentEntity>,
+    @InjectRepository(SusiKyokwaCutEntity)
+    private readonly susiKyokwaCutRepository: Repository<SusiKyokwaCutEntity>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
+  /**
+   * Step 1: 연도, 전형으로 조회 (등급컷, 대학이름 등)
+   * - 프론트엔드 차트에서 사용
+   */
   async getStep1(year: string, basicType: '일반' | '특별') {
     const cacheKey = `explore-susi-kyokwa:step1:${year}-${basicType}`;
     const cachedData = await this.cacheManager.get(cacheKey);
@@ -25,316 +35,494 @@ export class ExploreSusiKyokwaService {
       return cachedData;
     }
 
-    const queryBuilder = this.admissionRepository
-      .createQueryBuilder('admission')
-      .leftJoinAndSelect('admission.university', 'university')
-      .leftJoinAndSelect('admission.category', 'category')
-      .leftJoinAndSelect('admission.subtypes', 'subtypes')
-      .leftJoinAndSelect('admission.recruitment_units', 'recruitmentUnit')
-      .leftJoinAndSelect('recruitmentUnit.general_field', 'generalField')
-      .leftJoinAndSelect('recruitmentUnit.scores', 'scores')
-      .where('admission.year = :year', { year })
-      .andWhere('admission.basic_type = :basicType', { basicType })
-      .andWhere('admission.category.id = :categoryId', { categoryId: 1 });
+    // 전체 데이터 수 확인
+    const totalCount = await this.susiKyokwaRecruitmentRepository.count();
+    this.logger.log(`[getStep1] Total recruitment records: ${totalCount}`);
 
-    const admissions = await queryBuilder.getMany();
-    const groupedData = this.groupAdmissionData(admissions);
+    // 일반/특별 전형 데이터 수 확인
+    const targetCount = await this.susiKyokwaRecruitmentRepository.count({
+      where: { admissionCategory: basicType },
+    });
+    this.logger.log(`[getStep1] Filtered by admissionCategory="${basicType}": ${targetCount}`);
 
-    await this.cacheManager.set(cacheKey, { items: groupedData }, 120 * 60 * 1000); // 120분 캐시
-
-    return { items: groupedData };
-  }
-
-  async getStep2(recruitmentUnitIds: number[]) {
-    const queryBuilder = this.recruitmentUnitRepository
-      .createQueryBuilder('recruitmentUnit')
-      .leftJoinAndSelect('recruitmentUnit.admission', 'admission')
-      .leftJoinAndSelect('admission.university', 'university')
-      .leftJoinAndSelect('recruitmentUnit.general_field', 'generalField')
-      .leftJoinAndSelect('recruitmentUnit.minimum_grade', 'minimumGrade')
-      .where('recruitmentUnit.id IN (:...ids)', { ids: recruitmentUnitIds });
-
-    const recruitmentUnits = await queryBuilder.getMany();
-
-    const items = recruitmentUnits.map((unit) => ({
-      id: unit.id,
-      university: unit.admission.university,
-      admission: {
-        id: unit.admission.id,
-        name: unit.admission.name,
-        year: unit.admission.year,
-        basic_type: unit.admission.basic_type,
+    // susi_kyokwa_recruitment 테이블에서 데이터 조회
+    const recruitmentData = await this.susiKyokwaRecruitmentRepository.find({
+      where: {
+        admissionCategory: basicType,
       },
-      general_field: {
-        id: unit.general_field.id,
-        name: unit.general_field.name,
+      select: {
+        id: true,
+        idaId: true,
+        universityName: true,
+        universityCode: true,
+        universityType: true,
+        admissionType: true,
+        admissionName: true,
+        category: true,
+        recruitmentUnit: true,
+        regionMajor: true,
+        regionDetail: true,
+        majorField: true,
+        recruitmentCount: true,
       },
-      name: unit.name,
-      recruitment_number: unit.recruitment_number,
-      minimum_grade: unit.minimum_grade
-        ? {
-            is_applied: unit.minimum_grade.is_applied,
-            description: unit.minimum_grade.description,
-          }
-        : null,
-    }));
-
-    return { items };
-  }
-
-  async getStep3(recruitmentUnitIds: number[]) {
-    const queryBuilder = this.recruitmentUnitRepository
-      .createQueryBuilder('recruitmentUnit')
-      .leftJoinAndSelect('recruitmentUnit.admission', 'admission')
-      .leftJoinAndSelect('admission.university', 'university')
-      .leftJoinAndSelect('admission.method', 'method')
-      .leftJoinAndSelect('recruitmentUnit.general_field', 'generalField')
-      .where('recruitmentUnit.id IN (:...ids)', { ids: recruitmentUnitIds });
-
-    const recruitmentUnits = await queryBuilder.getMany();
-
-    const items = recruitmentUnits.map((unit) => ({
-      id: unit.id,
-      university: unit.admission.university,
-      admission: {
-        id: unit.admission.id,
-        name: unit.admission.name,
-        year: unit.admission.year,
-        basic_type: unit.admission.basic_type,
-      },
-      general_field: {
-        id: unit.general_field.id,
-        name: unit.general_field.name,
-      },
-      name: unit.name,
-      method: {
-        method_description: unit.admission.method.method_description,
-        subject_ratio: unit.admission.method.subject_ratio,
-        document_ratio: unit.admission.method.document_ratio,
-        interview_ratio: unit.admission.method.interview_ratio,
-        practical_ratio: unit.admission.method.practical_ratio,
-      },
-    }));
-
-    return { items };
-  }
-
-  async getStep4(recruitmentUnitIds: number[]) {
-    const queryBuilder = this.recruitmentUnitRepository
-      .createQueryBuilder('recruitmentUnit')
-      .leftJoinAndSelect('recruitmentUnit.admission', 'admission')
-      .leftJoinAndSelect('admission.university', 'university')
-      .leftJoinAndSelect('recruitmentUnit.general_field', 'generalField')
-      .leftJoinAndSelect('recruitmentUnit.scores', 'scores')
-      .where('recruitmentUnit.id IN (:...ids)', { ids: recruitmentUnitIds });
-
-    const recruitmentUnits = await queryBuilder.getMany();
-
-    const items = recruitmentUnits.map((unit) => ({
-      id: unit.id,
-      name: unit.name,
-      recruitment_number: unit.recruitment_number,
-      university: unit.admission.university,
-      admission: {
-        id: unit.admission.id,
-        name: unit.admission.name,
-        year: unit.admission.year,
-        basic_type: unit.admission.basic_type,
-      },
-      general_field: {
-        id: unit.general_field.id,
-        name: unit.general_field.name,
-      },
-      scores: unit.scores
-        ? {
-            grade_50_cut: unit.scores.grade_50_cut,
-            grade_70_cut: unit.scores.grade_70_cut,
-            risk_plus_5: unit.scores.risk_plus_5,
-            risk_plus_4: unit.scores.risk_plus_4,
-            risk_plus_3: unit.scores.risk_plus_3,
-            risk_plus_2: unit.scores.risk_plus_2,
-            risk_plus_1: unit.scores.risk_plus_1,
-            risk_minus_1: unit.scores.risk_minus_1,
-            risk_minus_2: unit.scores.risk_minus_2,
-            risk_minus_3: unit.scores.risk_minus_3,
-            risk_minus_4: unit.scores.risk_minus_4,
-            risk_minus_5: unit.scores.risk_minus_5,
-          }
-        : null,
-    }));
-
-    return { items };
-  }
-
-  async getStep5(recruitmentUnitIds: number[]) {
-    const queryBuilder = this.recruitmentUnitRepository
-      .createQueryBuilder('recruitmentUnit')
-      .leftJoinAndSelect('recruitmentUnit.admission', 'admission')
-      .leftJoinAndSelect('admission.university', 'university')
-      .leftJoinAndSelect('recruitmentUnit.general_field', 'generalField')
-      .leftJoinAndSelect('recruitmentUnit.interview', 'interview')
-      .where('recruitmentUnit.id IN (:...ids)', { ids: recruitmentUnitIds });
-
-    const recruitmentUnits = await queryBuilder.getMany();
-
-    const items = recruitmentUnits.map((unit) => ({
-      id: unit.id,
-      name: unit.name,
-      recruitment_number: unit.recruitment_number,
-      university: unit.admission.university,
-      admission: {
-        id: unit.admission.id,
-        name: unit.admission.name,
-        year: unit.admission.year,
-        basic_type: unit.admission.basic_type,
-      },
-      general_field: {
-        id: unit.general_field.id,
-        name: unit.general_field.name,
-      },
-      interview: unit.interview
-        ? {
-            is_reflected: unit.interview.is_reflected,
-            interview_type: unit.interview.interview_type,
-            materials_used: unit.interview.materials_used,
-            interview_process: unit.interview.interview_process,
-            evaluation_content: unit.interview.evaluation_content,
-            interview_date: unit.interview.interview_date,
-            interview_time: unit.interview.interview_time,
-          }
-        : null,
-    }));
-
-    return { items };
-  }
-
-  async getDetail(recruitmentUnitId: number) {
-    const recruitmentUnit = await this.recruitmentUnitRepository.findOne({
-      where: { id: recruitmentUnitId },
-      relations: [
-        'admission',
-        'admission.university',
-        'admission.category',
-        'admission.method',
-        'admission.subtypes',
-        'general_field',
-        'minor_field',
-        'minor_field.mid_field',
-        'minor_field.mid_field.major_field',
-        'minimum_grade',
-        'interview',
-        'scores',
-        'previous_results',
-      ],
     });
 
-    if (!recruitmentUnit) {
-      throw new NotFoundException(`Recruitment unit with ID "${recruitmentUnitId}" not found`);
+    // ida_id 목록 추출
+    const idaIds = recruitmentData.map((r) => r.idaId).filter(Boolean);
+
+    // susi_kyokwa_cut 테이블에서 등급컷 정보 조회
+    const cutData = await this.susiKyokwaCutRepository.find({
+      where: {
+        idaId: In(idaIds),
+      },
+    });
+
+    // ida_id를 키로 하는 Map 생성
+    const cutMap = new Map(cutData.map((cut) => [cut.idaId, cut]));
+
+    // 데이터 그룹화 (대학명-전형명-계열로 그룹화)
+    const groupedData = this.groupDataForStep1(recruitmentData, cutMap);
+    const result = { items: groupedData };
+
+    await this.cacheManager.set(cacheKey, result, 120 * 60 * 1000); // 120분 캐시
+
+    return result;
+  }
+
+  /**
+   * Step 2: ID 목록으로 최저등급 관련 데이터 조회
+   */
+  async getStep2(ids: number[]) {
+    const data = await this.susiKyokwaRecruitmentRepository.find({
+      where: { id: In(ids) },
+      select: {
+        id: true,
+        idaId: true,
+        universityName: true,
+        universityCode: true,
+        universityType: true,
+        regionMajor: true,
+        admissionType: true,
+        admissionName: true,
+        category: true,
+        recruitmentUnit: true,
+        majorField: true,
+        recruitmentCount: true,
+        minimumStandard: true,
+      },
+    });
+
+    const items = data.map((item) => ({
+      id: item.id,
+      university: {
+        id: 0,
+        name: item.universityName || '',
+        region: item.regionMajor || '',
+        code: item.universityCode || '',
+        establishment_type: item.universityType || '',
+      },
+      admission: {
+        id: 0,
+        name: item.admissionName || '',
+        year: 2025,
+        basic_type: '일반' as '일반' | '특별',
+      },
+      general_field: {
+        id: this.getDepartmentId(item.majorField),
+        name: item.majorField || '',
+      },
+      name: item.recruitmentUnit || '',
+      recruitment_number: item.recruitmentCount || null,
+      minimum_grade: {
+        is_applied: item.minimumStandard ? 'Y' : 'N',
+        description: item.minimumStandard || null,
+      },
+    }));
+
+    return { items };
+  }
+
+  /**
+   * Step 3: ID 목록으로 비교과 관련 데이터 조회
+   */
+  async getStep3(ids: number[]) {
+    const data = await this.susiKyokwaRecruitmentRepository.find({
+      where: { id: In(ids) },
+      select: {
+        id: true,
+        idaId: true,
+        universityName: true,
+        universityCode: true,
+        universityType: true,
+        regionMajor: true,
+        admissionType: true,
+        admissionName: true,
+        category: true,
+        recruitmentUnit: true,
+        majorField: true,
+        admissionMethod: true,
+        qualification: true,
+        studentRecordQuantitative: true,
+        documentRatio: true,
+        interviewRatio: true,
+      },
+    });
+
+    const items = data.map((item) => ({
+      id: item.id,
+      university: {
+        id: 0,
+        name: item.universityName || '',
+        region: item.regionMajor || '',
+        code: item.universityCode || '',
+        establishment_type: item.universityType || '',
+      },
+      admission: {
+        id: 0,
+        name: item.admissionName || '',
+        year: 2025,
+        basic_type: '일반' as '일반' | '특별',
+      },
+      general_field: {
+        id: this.getDepartmentId(item.majorField),
+        name: item.majorField || '',
+      },
+      name: item.recruitmentUnit || '',
+      method: {
+        method_description: item.admissionMethod,
+        subject_ratio: item.studentRecordQuantitative,
+        document_ratio: item.documentRatio,
+        interview_ratio: item.interviewRatio,
+        practical_ratio: null,
+        other_details: null,
+        second_stage_first_ratio: null,
+        second_stage_interview_ratio: null,
+        second_stage_other_ratio: null,
+        second_stage_other_details: null,
+        eligibility: item.qualification,
+        school_record_evaluation_score: null,
+        school_record_evaluation_elements: null,
+      },
+    }));
+
+    return { items };
+  }
+
+  /**
+   * Step 4: ID 목록으로 모집단위 관련 데이터 조회
+   */
+  async getStep4(ids: number[]) {
+    const recruitmentData = await this.susiKyokwaRecruitmentRepository.find({
+      where: { id: In(ids) },
+      select: {
+        id: true,
+        idaId: true,
+        universityName: true,
+        universityCode: true,
+        universityType: true,
+        regionMajor: true,
+        admissionType: true,
+        admissionName: true,
+        category: true,
+        recruitmentUnit: true,
+        majorField: true,
+        recruitmentCount: true,
+      },
+    });
+
+    // ida_id 목록 추출
+    const idaIds = recruitmentData.map((r) => r.idaId).filter(Boolean);
+
+    // susi_kyokwa_cut 테이블에서 등급컷 정보 조회
+    const cutData = await this.susiKyokwaCutRepository.find({
+      where: {
+        idaId: In(idaIds),
+      },
+    });
+
+    // ida_id를 키로 하는 Map 생성
+    const cutMap = new Map(cutData.map((cut) => [cut.idaId, cut]));
+
+    const items = recruitmentData.map((item) => {
+      const cut = cutMap.get(item.idaId);
+
+      return {
+        id: item.id,
+        name: item.recruitmentUnit || '',
+        recruitment_number: item.recruitmentCount || null,
+        university: {
+          id: 0,
+          name: item.universityName || '',
+          region: item.regionMajor || '',
+          code: item.universityCode || '',
+          establishment_type: item.universityType || '',
+        },
+        admission: {
+          id: 0,
+          name: item.admissionName || '',
+          year: 2025,
+          basic_type: '일반' as '일반' | '특별',
+        },
+        general_field: {
+          id: this.getDepartmentId(item.majorField),
+          name: item.majorField || '',
+        },
+        scores: {
+          grade_50_cut: cut?.gradeInitialCut || null,
+          grade_70_cut: cut?.gradeAdditionalCut || null,
+          convert_50_cut: cut?.convertedScoreInitialCut || null,
+          convert_70_cut: null,
+          risk_plus_5: null,
+          risk_plus_4: null,
+          risk_plus_3: null,
+          risk_plus_2: null,
+          risk_plus_1: null,
+          risk_minus_1: null,
+          risk_minus_2: null,
+          risk_minus_3: null,
+          risk_minus_4: null,
+          risk_minus_5: null,
+        },
+      };
+    });
+
+    return { items };
+  }
+
+  /**
+   * Step 5: ID 목록으로 전형일자(면접) 관련 데이터 조회
+   */
+  async getStep5(ids: number[]) {
+    const data = await this.susiKyokwaRecruitmentRepository.find({
+      where: { id: In(ids) },
+      select: {
+        id: true,
+        idaId: true,
+        universityName: true,
+        universityCode: true,
+        universityType: true,
+        regionMajor: true,
+        admissionType: true,
+        admissionName: true,
+        category: true,
+        recruitmentUnit: true,
+        majorField: true,
+        recruitmentCount: true,
+        interviewRatio: true,
+      },
+    });
+
+    const items = data.map((item) => ({
+      id: item.id,
+      name: item.recruitmentUnit || '',
+      recruitment_number: item.recruitmentCount || null,
+      university: {
+        id: 0,
+        name: item.universityName || '',
+        region: item.regionMajor || '',
+        code: item.universityCode || '',
+        establishment_type: item.universityType || '',
+      },
+      admission: {
+        id: 0,
+        name: item.admissionName || '',
+        year: 2025,
+        basic_type: '일반' as '일반' | '특별',
+      },
+      general_field: {
+        id: this.getDepartmentId(item.majorField),
+        name: item.majorField || '',
+      },
+      interview: item.interviewRatio
+        ? {
+            is_reflected: 1,
+            interview_type: null,
+            materials_used: null,
+            interview_process: null,
+            evaluation_content: null,
+            interview_date: null,
+            interview_time: null,
+          }
+        : null,
+    }));
+
+    return { items };
+  }
+
+  /**
+   * 상세 정보 조회
+   */
+  async getDetail(id: number) {
+    const item = await this.susiKyokwaRecruitmentRepository.findOne({
+      where: { id },
+    });
+
+    if (!item) {
+      throw new NotFoundException(`ID ${id}에 해당하는 데이터를 찾을 수 없습니다.`);
     }
 
+    // 등급컷 정보 조회
+    const cut = await this.susiKyokwaCutRepository.findOne({
+      where: { idaId: item.idaId },
+    });
+
     return {
-      id: recruitmentUnit.id,
-      name: recruitmentUnit.name,
-      recruitment_number: recruitmentUnit.recruitment_number,
-      university: recruitmentUnit.admission.university,
+      id: item.id,
+      name: item.recruitmentUnit || '',
+      recruitment_number: item.recruitmentCount || null,
+      university: {
+        id: 0,
+        name: item.universityName || '',
+        region: item.regionMajor || '',
+        code: item.universityCode || '',
+        establishment_type: item.universityType || '',
+      },
       admission: {
-        id: recruitmentUnit.admission.id,
-        name: recruitmentUnit.admission.name,
-        year: recruitmentUnit.admission.year,
-        basic_type: recruitmentUnit.admission.basic_type,
-        category: recruitmentUnit.admission.category,
-        subtypes: recruitmentUnit.admission.subtypes,
+        id: 0,
+        name: item.admissionName || '',
+        year: 2025,
+        basic_type: '일반' as '일반' | '특별',
+        category: {
+          id: 1,
+          name: '교과',
+        },
+        subtypes: [],
       },
-      admission_method: recruitmentUnit.admission.method,
-      general_field: recruitmentUnit.general_field,
+      admission_method: {
+        method_description: item.admissionMethod,
+        subject_ratio: item.studentRecordQuantitative,
+        document_ratio: item.documentRatio,
+        interview_ratio: item.interviewRatio,
+        practical_ratio: item.practicalRatio,
+        other_details: null,
+        second_stage_first_ratio: null,
+        second_stage_interview_ratio: null,
+        second_stage_other_ratio: null,
+        second_stage_other_details: null,
+        eligibility: item.qualification,
+        school_record_evaluation_score: null,
+        school_record_evaluation_elements: null,
+      },
+      general_field: {
+        id: this.getDepartmentId(item.majorField),
+        name: item.majorField || '',
+      },
       fields: {
-        major: recruitmentUnit.minor_field?.mid_field?.major_field,
-        mid: recruitmentUnit.minor_field?.mid_field,
-        minor: recruitmentUnit.minor_field,
+        major: item.majorField ? { id: 0, name: item.majorField } : null,
+        mid: item.midField ? { id: 0, name: item.midField } : null,
+        minor: item.minorField ? { id: 0, name: item.minorField } : null,
       },
-      minimum_grade: recruitmentUnit.minimum_grade,
-      interview: recruitmentUnit.interview,
-      scores: recruitmentUnit.scores,
-      previous_results: recruitmentUnit.previous_results,
+      minimum_grade: {
+        is_applied: item.minimumStandard ? 'Y' : 'N',
+        description: item.minimumStandard,
+      },
+      interview: item.interviewRatio
+        ? {
+            is_reflected: 1,
+            interview_type: null,
+            materials_used: null,
+            interview_process: null,
+            evaluation_content: null,
+            interview_date: null,
+            interview_time: null,
+          }
+        : null,
+      scores: {
+        grade_50_cut: cut?.gradeInitialCut || null,
+        grade_70_cut: cut?.gradeAdditionalCut || null,
+        convert_50_cut: cut?.convertedScoreInitialCut || null,
+        convert_70_cut: null,
+        risk_plus_5: null,
+        risk_plus_4: null,
+        risk_plus_3: null,
+        risk_plus_2: null,
+        risk_plus_1: null,
+        risk_minus_1: null,
+        risk_minus_2: null,
+        risk_minus_3: null,
+        risk_minus_4: null,
+        risk_minus_5: null,
+      },
+      previous_results: this.buildPreviousResults(cut),
     };
   }
 
-  private groupAdmissionData(admissions: AdmissionEntity[]) {
-    const groupedMap = new Map();
+  /**
+   * 데이터 그룹화 (Step 1용)
+   * - 대학명-전형명-계열로 그룹화하여 min_cut, max_cut 계산
+   */
+  private groupDataForStep1(
+    recruitmentData: SusiKyokwaRecruitmentEntity[],
+    cutMap: Map<string, SusiKyokwaCutEntity>,
+  ) {
+    const groupedMap = new Map<
+      string,
+      {
+        id: number;
+        university: {
+          id: number;
+          name: string;
+          region: string;
+          code: string;
+          establishment_type: string;
+        };
+        name: string;
+        year: number;
+        basic_type: '일반' | '특별';
+        category: { id: number; name: string };
+        subtype_ids: number[];
+        general_type: { id: number; name: string };
+        min_cut: number | null;
+        max_cut: number | null;
+        recruitment_unit_ids: number[];
+      }
+    >();
 
-    // Debug: 전체 admission 수와 recruitment_unit 수 확인
-    this.logger.log(`[DEBUG] Total admissions: ${admissions.length}`);
-    let totalUnits = 0;
-    let unitsWithScores = 0;
-    let unitsWithValidGrade = 0;
+    recruitmentData.forEach((item) => {
+      if (!item.majorField) return;
 
-    admissions.forEach((admission) => {
-      admission.recruitment_units.forEach((recruitmentUnit) => {
-        totalUnits++;
+      const key = `${item.universityName}-${item.admissionName}-${item.majorField}`;
+      const cut = cutMap.get(item.idaId);
+      const gradeCut = cut?.gradeInitialCut;
+      const gradeCutNum = gradeCut ? parseFloat(String(gradeCut)) : NaN;
+      const validGradeCut = !isNaN(gradeCutNum) && gradeCutNum >= 1 && gradeCutNum <= 9 ? gradeCutNum : null;
 
-        // general_field가 없는 경우 건너뛰기
-        if (!recruitmentUnit.general_field) {
-          return;
-        }
-
-        const key = `${admission.id}-${recruitmentUnit.general_field.id}`;
-        if (!groupedMap.has(key)) {
-          groupedMap.set(key, {
-            id: admission.id,
-            university: admission.university,
-            name: admission.name,
-            year: admission.year,
-            basic_type: admission.basic_type,
-            category: admission.category,
-            subtype_ids: admission.subtypes.map((n) => n.id),
-            general_type: recruitmentUnit.general_field,
-            min_cut: null,
-            max_cut: null,
-            recruitment_unit_ids: [],
-          });
-        }
-
-        const group = groupedMap.get(key);
-        const scores = recruitmentUnit.scores;
-
-        // Debug: scores 존재 여부 확인
-        if (scores) {
-          unitsWithScores++;
-          this.logger.log(`[DEBUG] RecruitmentUnit with scores: ${JSON.stringify({
-            id: recruitmentUnit.id,
-            name: recruitmentUnit.name,
-            university: admission.university.name,
-            grade_50_cut: scores.grade_50_cut,
-            grade_70_cut: scores.grade_70_cut,
-          })}`);
-        }
-
-        let grade_cut = null;
-        if (scores) {
-          // 문자열을 숫자로 변환
-          grade_cut = parseFloat(scores.grade_50_cut + '');
-        }
-
-        if (!isNaN(grade_cut) && grade_cut >= 1 && grade_cut <= 9) {
-          unitsWithValidGrade++;
-          if (group.min_cut === null || grade_cut < group.min_cut) {
-            group.min_cut = grade_cut;
+      if (!groupedMap.has(key)) {
+        groupedMap.set(key, {
+          id: item.id,
+          university: {
+            id: 0,
+            name: item.universityName || '',
+            region: item.regionMajor || '',
+            code: item.universityCode || '',
+            establishment_type: item.universityType || '',
+          },
+          name: item.admissionName || '',
+          year: 2025,
+          basic_type: '일반',
+          category: { id: 1, name: '교과' },
+          subtype_ids: [],
+          general_type: {
+            id: this.getDepartmentId(item.majorField),
+            name: item.majorField,
+          },
+          min_cut: validGradeCut,
+          max_cut: validGradeCut ? validGradeCut + 0.05 : null,
+          recruitment_unit_ids: [item.id],
+        });
+      } else {
+        const group = groupedMap.get(key)!;
+        if (validGradeCut !== null) {
+          if (group.min_cut === null || validGradeCut < group.min_cut) {
+            group.min_cut = validGradeCut;
           }
-          if (group.max_cut === null || grade_cut > group.max_cut) {
-            group.max_cut = grade_cut;
+          if (group.max_cut === null || validGradeCut > group.max_cut) {
+            group.max_cut = validGradeCut;
           }
         }
-
-        group.recruitment_unit_ids.push(recruitmentUnit.id);
-      });
+        group.recruitment_unit_ids.push(item.id);
+      }
     });
-
-    this.logger.log(`[DEBUG] Stats: ${JSON.stringify({
-      totalUnits,
-      unitsWithScores,
-      unitsWithValidGrade,
-      groupedCount: groupedMap.size
-    })}`);
 
     return Array.from(groupedMap.values()).map((group) => {
       if (group.min_cut !== null && group.max_cut !== null) {
@@ -347,11 +535,56 @@ export class ExploreSusiKyokwaService {
           max_cut: parseFloat(group.max_cut.toFixed(2)),
         };
       }
-      return {
-        ...group,
-        min_cut: null,
-        max_cut: null,
-      };
+      return group;
     });
+  }
+
+  /**
+   * 계열(department) 문자열을 ID로 변환
+   */
+  private getDepartmentId(department: string | null): number {
+    const departmentMap: Record<string, number> = {
+      인문: 1,
+      사회: 2,
+      자연: 3,
+      공학: 4,
+      의약: 5,
+      예체능: 6,
+      교육: 7,
+    };
+    return departmentMap[department || ''] || 0;
+  }
+
+  /**
+   * 과거 입결 데이터 구성
+   */
+  private buildPreviousResults(cut: SusiKyokwaCutEntity | undefined) {
+    if (!cut) return [];
+
+    const results = [];
+
+    if (cut.grade50p2024 || cut.competitionRate2024) {
+      results.push({
+        year: 2024,
+        result_criteria: '50%',
+        grade_cut: cut.grade50p2024 || null,
+        converted_score_cut: cut.convertedScore50p2024 || null,
+        competition_ratio: cut.competitionRate2024 || null,
+        recruitment_number: cut.recruitment2024 || null,
+      });
+    }
+
+    if (cut.grade50p2023 || cut.competitionRate2023) {
+      results.push({
+        year: 2023,
+        result_criteria: '50%',
+        grade_cut: cut.grade50p2023 || null,
+        converted_score_cut: cut.convertedScore50p2023 || null,
+        competition_ratio: cut.competitionRate2023 || null,
+        recruitment_number: cut.recruitment2023 || null,
+      });
+    }
+
+    return results;
   }
 }
