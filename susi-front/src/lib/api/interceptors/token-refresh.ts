@@ -1,11 +1,12 @@
 /**
  * 토큰 갱신 인터셉터
  * Reference 프로젝트의 단순화된 토큰 갱신 패턴 적용
+ * Hub 중앙 인증 서버를 통해 토큰 갱신 (SSO 토큰은 Hub에서만 갱신 가능)
  */
 
 import { AxiosError } from 'axios';
 import { camelizeKeys } from 'humps';
-import { publicClient } from '../instances';
+import { hubApiClient } from '@/stores/server/hub-api-client';
 import {
   clearTokens,
   getRefreshToken,
@@ -16,6 +17,7 @@ import { redirectToHubLogin } from '../../auth/redirect-to-login';
 
 /**
  * 토큰 갱신 API 호출
+ * Hub 인증 서버(/api-hub)를 통해 토큰을 갱신합니다.
  */
 const refreshAccessToken = async (): Promise<string | null> => {
   try {
@@ -24,16 +26,16 @@ const refreshAccessToken = async (): Promise<string | null> => {
       return null;
     }
 
-    const response = await publicClient.get('/auth/refresh', {
-      headers: {
-        refreshToken: `Bearer ${refreshToken}`,
-      },
+    // Hub 인증 서버에 토큰 갱신 요청
+    const response = await hubApiClient.post('/auth/refresh', {
+      refreshToken,
     });
 
     const { accessToken } = response.data;
     if (accessToken) {
-      setAccessToken(accessToken.accessToken);
-      return accessToken.accessToken;
+      const token = accessToken.accessToken || accessToken;
+      setAccessToken(token);
+      return token;
     }
 
     return null;

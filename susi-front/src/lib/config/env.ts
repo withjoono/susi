@@ -24,6 +24,9 @@ interface EnvConfig {
   // 프론트엔드 URL
   frontUrl: string;
 
+  // Hub 프론트엔드 URL (SSO 인증용)
+  hubUrl: string;
+
   // Hub 중앙 인증 서버 URL (GB-Back-Nest)
   // 로그인/회원가입 등 인증 관련 API 호출
   apiUrlHub: string;
@@ -37,13 +40,13 @@ interface EnvConfig {
   // 소셜 로그인
   naverLoginClientId: string;
   googleClientId: string;
-  
+
   // Firebase
   firebase: FirebaseConfig;
-  
+
   // GCP
   gcp: GCPConfig;
-  
+
   // 환경
   isDevelopment: boolean;
   isProduction: boolean;
@@ -64,16 +67,19 @@ const isDev = import.meta.env.DEV;
 
 export const env: EnvConfig = {
   // 프론트엔드 URL
-  frontUrl: getEnvVar('VITE_FRONT_URL', 'http://localhost:3000'),
+  frontUrl: getEnvVar('VITE_FRONT_URL', 'http://localhost:3001'),
+
+  // Hub 프론트엔드 URL (SSO 인증용)
+  hubUrl: getEnvVar('VITE_HUB_URL', 'http://localhost:3000'),
 
   // Hub 중앙 인증 서버 URL (GB-Back-Nest)
-  // 개발 환경에서는 프록시 사용 (/api-hub -> http://localhost:4001)
-  apiUrlHub: isDev ? '/api-hub' : getEnvVar('VITE_API_URL_HUB', 'http://localhost:4001'),
+  // 개발 환경에서는 프록시 사용 (/api-hub -> http://localhost:4000)
+  apiUrlHub: isDev ? '/api-hub' : getEnvVar('VITE_API_URL_HUB', 'http://localhost:4000'),
 
   // Susi 백엔드 API URL (개발: 프록시, 프로덕션: 직접 연결)
   // Spring 백엔드는 더 이상 사용하지 않음 (2024-12 NestJS로 완전 마이그레이션)
   // apiUrlSpring: isDev ? '/api-spring' : getEnvVar('VITE_API_URL_SPRING', 'http://localhost:8080'),
-  apiUrlNest: isDev ? '/api-susi' : getEnvVar('VITE_API_URL_SUSI', 'http://localhost:4002'),
+  apiUrlNest: isDev ? '/api-nest' : getEnvVar('VITE_API_URL_NEST', 'http://localhost:4001'),
   
   // 소셜 로그인
   naverLoginClientId: getEnvVar('VITE_NAVER_LOGIN_CLIENT_ID'),
@@ -106,6 +112,7 @@ export const env: EnvConfig = {
 if (env.isDevelopment) {
   console.log('Environment Configuration:', {
     mode: import.meta.env.MODE,
+    hubUrl: env.hubUrl, // Hub 프론트엔드 (SSO)
     apiUrlHub: env.apiUrlHub, // Hub 인증 서버 (GB-Back-Nest)
     apiUrlNest: env.apiUrlNest, // Susi 백엔드
     frontUrl: env.frontUrl,

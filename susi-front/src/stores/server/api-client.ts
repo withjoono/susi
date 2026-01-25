@@ -139,11 +139,10 @@ const createNestApiInterceptors = (apiClientInstance) => {
 
         if (refreshToken) {
           try {
-            // 토큰 갱신 시도 (환경에 따른 URL 사용)
-            const response = await axios.get(getBaseUrl('nest') + '/auth/refresh', {
-              headers: {
-                refreshToken: `Bearer ${refreshToken}`
-              }
+            // 토큰 갱신 시도 (Hub 인증 서버 사용 - SSO 토큰은 Hub에서만 갱신 가능)
+            const hubBaseUrl = env.isDevelopment ? '/api-hub' : env.apiUrlHub;
+            const response = await axios.post(hubBaseUrl + '/auth/refresh', {
+              refreshToken,
             });
 
             const { accessToken, refreshToken: newRefreshToken } = response.data.data;
