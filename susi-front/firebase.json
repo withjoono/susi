@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "target": "susi",
     "public": "dist",
     "ignore": [
       "firebase.json",
