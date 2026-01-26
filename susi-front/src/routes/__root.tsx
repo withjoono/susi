@@ -7,10 +7,6 @@ import { GradeAnalysisHeader } from "@/components/grade-analysis-header";
 import ScrollToTop from "@/components/scroll-to-top";
 import { Toaster } from "@/components/ui/sonner";
 import { createRootRoute, Outlet, useLocation } from "@tanstack/react-router";
-import { useSSOReceiver } from "@/lib/sso-client";
-import { useTokenStore } from "@/stores/atoms/tokens";
-import { setTokens, clearTokens } from "@/lib/api/token-manager";
-import { env } from "@/lib/config/env";
 
 function isJungsiPath(pathname: string): boolean {
   return pathname.startsWith("/jungsi") || pathname.startsWith("/j");
@@ -30,30 +26,6 @@ function isGradeAnalysisPath(pathname: string): boolean {
 
 function RootLayout() {
   const location = useLocation();
-  const tokenStore = useTokenStore();
-
-  // Hub SSO 토큰 수신 설정
-  useSSOReceiver({
-    hubUrl: env.hubUrl,
-    allowedOrigins: [
-      env.hubUrl,
-      'https://geobukschool.kr',
-      'https://www.geobukschool.kr',
-      'http://localhost:3000',
-    ],
-    onTokensReceived: (tokens) => {
-      console.log('[Susi] Hub에서 SSO 토큰 수신');
-      // token-manager와 Zustand store 모두에 저장
-      setTokens(tokens.accessToken, tokens.refreshToken);
-      tokenStore.setTokens(tokens.accessToken, tokens.refreshToken);
-    },
-    onLogout: () => {
-      console.log('[Susi] Hub에서 로그아웃 메시지 수신');
-      clearTokens();
-      tokenStore.clearTokens();
-    },
-    debug: env.isDevelopment,
-  });
 
   const isTestPage = location.pathname === "/test/auth-me" || location.pathname === "/test/login-debug";
   const isAuthPage = location.pathname.startsWith("/auth/");

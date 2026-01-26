@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { meQueryKeys } from "@/stores/server/features/me/queries";
-import { generateSSOUrl, isSSOService } from "@/lib/utils/sso-helper";
+
 interface Props {
   className?: string;
 }
@@ -52,9 +52,6 @@ export function RegisterWithEmailForm({ className }: Props) {
   >("student");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-
-  // URL에서 redirect_uri 파라미터 확인 (SSO 리디렉트용)
-  const redirectUri = new URLSearchParams(window.location.search).get('redirect_uri');
 
   // Mutations
   const registerWithEmail = useRegisterWithEmail();
@@ -138,44 +135,77 @@ export function RegisterWithEmailForm({ className }: Props) {
     );
     // 만약 학교 값이 존재하는데 학교 목록에 없으면 잘못된 학교임으로 에러처리
     if (values.school !== "" && !school) {
-      toast.error(
-        "잘못된 학교입니다. 리스트에 학교가 없다면 필드를 비워주세요.",
-      );
+      form.setError("school", {
+        type: "manual",
+        message: "잘못된 학교입니다. 리스트에 학교가 없다면 필드를 비워주세요.",
+      });
       return;
     }
-    const formattedPhone = values.phone?.replace(/-/g, "") || "";
-    const result = await registerWithEmail.mutateAsync({
-      email: values.email,
-      password: values.password,
-      nickname: values.name,
-      hstTypeId: school?.id,
-      isMajor: String(values.major),
-      graduateYear: String(values.graduateYear),
-      phone: formattedPhone,
-      ckSmsAgree: agreeToTerms[3],
-      memberType: memberType,
-    });
-    // 스프링 시큐리티에 로그인 등록
-    await emailLoginFetch({
-      email: values.email,
-      password: values.password,
-    });
 
-    if (result.success) {
-      // 회원가입 성공 후 me 쿼리 캐시 무효화
-      await queryClient.invalidateQueries({ queryKey: meQueryKeys.all });
-      toast.success("거북스쿨에 가입해주셔서 감사합니다! 😄");
+    try {
+      const formattedPhone = values.phone?.replace(/-/g, "") || "";
+      const result = await registerWithEmail.mutateAsync({
+        email: values.email,
+        password: values.password,
+        nickname: values.name,
+        hstTypeId: school?.id,
+        isMajor: String(values.major),
+        graduateYear: String(values.graduateYear),
+        phone: formattedPhone,
+        ckSmsAgree: agreeToTerms[3],
+        memberType: memberType,
+      });
 
-      // SSO 리디렉트: redirect_uri가 있고 SSO 서비스이면 토큰과 함께 외부로 리디렉트
-      if (redirectUri && isSSOService(redirectUri)) {
-        const ssoUrl = generateSSOUrl(redirectUri);
-        window.location.href = ssoUrl;
-        return;
+      // 스프링 시큐리티에 로그인 등록
+      await emailLoginFetch({
+        email: values.email,
+        password: values.password,
+      });
+
+      if (result.success) {
+        // 회원가입 성공 후 me 쿼리 캐시 무효화
+        await queryClient.invalidateQueries({ queryKey: meQueryKeys.all });
+        toast.success("거북스쿨에 가입해주셔서 감사합니다! 😄");
+        navigate({ to: "/" });
+      } else {
+        toast.error(result.error);
       }
+    } catch (error: any) {
+      // 에러 메시지에서 필드 판단
+      const errorMessage = error.response?.data?.message || "회원가입 중 오류가 발생했습니다.";
 
-      navigate({ to: "/" });
-    } else {
-      toast.error(result.error);
+      // 이메일 관련 에러
+      if (errorMessage.includes("이메일") || errorMessage.includes("email")) {
+        form.setError("email", {
+          type: "manual",
+          message: errorMessage,
+        });
+      }
+      // 전화번호 관련 에러
+      else if (errorMessage.includes("전화") || errorMessage.includes("phone") || errorMessage.includes("휴대폰")) {
+        form.setError("phone", {
+          type: "manual",
+          message: errorMessage,
+        });
+      }
+      // 비밀번호 관련 에러
+      else if (errorMessage.includes("비밀번호") || errorMessage.includes("password")) {
+        form.setError("password", {
+          type: "manual",
+          message: errorMessage,
+        });
+      }
+      // 닉네임/이름 관련 에러
+      else if (errorMessage.includes("이름") || errorMessage.includes("닉네임") || errorMessage.includes("nickname")) {
+        form.setError("name", {
+          type: "manual",
+          message: errorMessage,
+        });
+      }
+      // 기타 에러는 toast로 표시 (5초 동안)
+      else {
+        toast.error(errorMessage, { duration: 5000 });
+      }
     }
   }
 
