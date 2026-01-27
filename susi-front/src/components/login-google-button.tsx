@@ -9,6 +9,7 @@ import { useGetCurrentUser } from "@/stores/server/features/me/queries";
 import { socialLoginFetch } from "@/stores/server/features/auth/apis";
 import { auth, provider } from "@/lib/utils/firebase/firebase";
 import { USER_API } from "@/stores/server/features/me/apis";
+import { setTokens } from "@/lib/api/token-manager";
 
 interface Props {
   isPending?: boolean;
@@ -21,55 +22,73 @@ export const GoogleLoginButton = ({ isPending, buttonText = "구글 로그인" }
   const navigate = useNavigate();
   const user = useGetCurrentUser();
 
-  const handleGoogleLoginClick = () => {
-    signInWithPopup(auth, provider)
-      .then(async (data) => {
-        const credential = GoogleAuthProvider.credentialFromResult(data);
+  const handleGoogleLoginClick = async () => {
+    try {
+      // 1. Firebase Google 로그인
+      const result = await signInWithPopup(auth, provider);
 
-        if (!credential?.idToken) {
-          toast.error(
-            "소셜 간편 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.",
-          );
-          return;
-        }
-        const result = await loginWithSocial.mutateAsync({
-          socialType: "google",
-          accessToken: credential.idToken,
-        });
-        // 스프링 시큐리티에 로그인
-        socialLoginFetch({ oauthId: data?.user?.providerData[0].uid });
-        if (result.success) {
-          toast.success("환영합니다. 거북스쿨입니다. 😄");
-          await user.refetch();
+      // 2. Firebase ID 토큰 가져오기
+      const idToken = await result.user.getIdToken();
 
-          // 사용자 정보를 가져와서 memberType에 따라 리다이렉트
-          try {
-            const userData = await USER_API.fetchCurrentUserAPI();
-            if (userData?.memberType === 'teacher') {
-              navigate({ to: "/mentoring/admin" });
-            } else if (userData?.memberType === 'parent') {
-              navigate({ to: "/mentoring/parent" });
-            } else {
-              navigate({ to: "/" });
-            }
-          } catch {
-            navigate({ to: "/" });
-          }
-        } else {
-          if (result.error !== "이미 사용중인 이메일입니다.") {
-            // 실패 시 회원가입을 위해 oauth정보 저장
-            setData({
-              socialType: "google",
-              token: credential.idToken,
-            });
-            navigate({ to: "/auth/register", replace: true });
-          }
-          toast.error(result.error);
-        }
-      })
-      .catch((err) => {
-        console.log(err);
+      // 3. Firebase 토큰으로 백엔드 로그인
+      const response = await fetch('/api-hub/auth/firebase/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idToken }),
       });
+
+      const loginData = await response.json();
+
+      // 404 에러: 신규 사용자 -> 회원가입 페이지로 이동
+      if (response.status === 404) {
+        // Firebase 토큰을 저장해서 회원가입 시 사용
+        setData({
+          socialType: "google",
+          token: idToken,
+        });
+        toast.info("신규 사용자입니다. 회원가입을 진행해주세요.");
+        navigate({ to: "/auth/register", replace: true });
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(loginData.message || '로그인 실패');
+      }
+
+      if (loginData.success) {
+        // 토큰을 localStorage에 저장 (쿠키는 포트 간 공유 안 됨)
+        setTokens(loginData.data.accessToken, loginData.data.refreshToken);
+
+        toast.success("환영합니다. 거북스쿨입니다. 😄");
+        await user.refetch();
+
+        // Hub 메인으로 이동
+        window.location.href = "http://localhost:3000";
+      } else {
+        toast.error(loginData.message || "로그인에 실패했습니다.");
+      }
+    } catch (err: any) {
+      console.error("Google 로그인 에러:", err);
+
+      // 사용자 친화적 에러 메시지
+      let errorMessage = "구글 로그인 중 오류가 발생했습니다.";
+
+      if (err.code === "auth/popup-closed-by-user") {
+        // 사용자가 팝업을 닫은 경우 - 에러 토스트 표시하지 않음
+        return;
+      } else if (err.code === "auth/popup-blocked") {
+        errorMessage = "팝업이 차단되었습니다. 팝업 차단을 해제해주세요.";
+      } else if (err.code === "auth/network-request-failed") {
+        errorMessage = "네트워크 연결을 확인해주세요.";
+      } else if (err.code === "auth/cancelled-popup-request") {
+        // 이전 팝업 요청 취소 - 에러 토스트 표시하지 않음
+        return;
+      }
+
+      toast.error(errorMessage);
+    }
   };
 
   return (

@@ -1,7 +1,7 @@
 /**
  * 토큰 갱신 인터셉터
  * Reference 프로젝트의 단순화된 토큰 갱신 패턴 적용
- * Hub 중앙 인증 서버를 통해 토큰 갱신 (SSO 토큰은 Hub에서만 갱신 가능)
+ * Hub 중앙 인증 서버를 통해 토큰 갱신 (Firebase 토큰은 Hub에서만 갱신 가능)
  */
 
 import { AxiosError } from 'axios';
@@ -13,7 +13,6 @@ import {
   setAccessToken,
 } from '../token-manager';
 import { ERROR_CODES } from '../../errors/error-codes';
-import { redirectToHubLogin } from '../../auth/redirect-to-login';
 
 /**
  * 토큰 갱신 API 호출
@@ -46,17 +45,17 @@ const refreshAccessToken = async (): Promise<string | null> => {
 };
 
 /**
- * 로그아웃 처리 (토큰 제거 + Hub OAuth 로그인으로 리다이렉트)
+ * 로그아웃 처리 (토큰 제거 + Hub Firebase 로그인으로 리다이렉트)
  */
 const handleLogout = () => {
-  // OAuth 콜백 페이지에서는 처리하지 않음 (무한 루프 방지)
-  if (window.location.pathname.includes('/auth/oauth/callback')) {
+  // 로그인 페이지에서는 처리하지 않음 (무한 루프 방지)
+  if (window.location.pathname.includes('/auth/login')) {
     return;
   }
 
   clearTokens();
-  // Hub OAuth 로그인으로 바로 리다이렉트 (별도 로그인 페이지 없음)
-  redirectToHubLogin();
+  // Hub Firebase 로그인으로 리다이렉트
+  window.location.href = 'http://localhost:3000/auth/login';
 };
 
 /**

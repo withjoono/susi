@@ -29,7 +29,6 @@ import { Checkbox } from "./ui/checkbox";
 import { HIGH_SCHOOL_LIST } from "@/constants/high-school";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
-  useRegisterWithSocial,
   useSendRegisterCode,
   useVerifyCode,
 } from "@/stores/server/features/auth/mutations";
@@ -43,6 +42,7 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { meQueryKeys } from "@/stores/server/features/me/queries";
+import { setTokens } from "@/lib/api/token-manager";
 
 interface Props {
   className?: string;
@@ -62,9 +62,9 @@ export function RegisterWithSocialForm({ className }: Props) {
   const queryClient = useQueryClient();
   // 휴대폰 번호
   const [isAuthedPhone, setIsAuthedPhone] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Mutations
-  const registerWithSocial = useRegisterWithSocial();
   const sendRegisterCode = useSendRegisterCode();
   const verifyCode = useVerifyCode();
 
@@ -147,6 +147,8 @@ export function RegisterWithSocialForm({ className }: Props) {
       return;
     }
 
+    setIsLoading(true);
+
     const school = HIGH_SCHOOL_LIST.find(
       (n) => n.highschoolName === values.school,
     );
@@ -158,25 +160,41 @@ export function RegisterWithSocialForm({ className }: Props) {
       return;
     }
     const formattedPhone = values.phone.replace(/-/g, "");
-    const result = await registerWithSocial.mutateAsync({
-      socialType: socialType,
-      accessToken: socialToken,
-      nickname: values.name,
-      hstTypeId: school?.id,
-      isMajor: String(values.major),
-      graduateYear: String(values.graduateYear),
-      phone: formattedPhone,
-      ckSmsAgree: agreeToTerms[3],
-      memberType: memberType,
+
+    // Firebase 회원가입 API 호출
+    const response = await fetch('/api-hub/auth/firebase/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        idToken: socialToken,
+        nickname: values.name,
+        hstTypeId: school?.id,
+        isMajor: String(values.major),
+        graduateYear: String(values.graduateYear),
+        phone: formattedPhone,
+        ckSmsAgree: agreeToTerms[3],
+        memberType: memberType,
+      }),
     });
 
-    if (result.success) {
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      // 토큰을 localStorage에 저장 (쿠키는 포트 간 공유 안 됨)
+      setTokens(result.data.accessToken, result.data.refreshToken);
+
       // 회원가입 성공 후 me 쿼리 캐시 무효화
       await queryClient.invalidateQueries({ queryKey: meQueryKeys.all });
+      clearSocialData(); // 소셜 로그인 임시 데이터 삭제
       toast.success("거북스쿨에 가입해주셔서 감사합니다! 😄");
-      navigate({ to: "/" });
+      setIsLoading(false);
+      // Hub 메인으로 이동
+      window.location.href = "http://localhost:3000";
     } else {
-      toast.error(result.error);
+      toast.error(result.message || result.error || "회원가입에 실패했습니다.");
+      setIsLoading(false);
     }
   }
 
@@ -503,7 +521,7 @@ export function RegisterWithSocialForm({ className }: Props) {
             type="submit"
             className="w-full"
             disabled={
-              registerWithSocial.isPending ||
+              isLoading ||
               !agreeToTerms[0] ||
               !agreeToTerms[1] ||
               !agreeToTerms[2]
