@@ -41,15 +41,18 @@ export const GoogleLoginButton = ({ isPending, buttonText = "구글 로그인" }
 
       const loginData = await response.json();
 
-      // 404 에러: 신규 사용자 -> 회원가입 페이지로 이동
+      // 404 에러: 신규 사용자 -> Hub 회원가입 페이지로 이동
       if (response.status === 404) {
-        // Firebase 토큰을 저장해서 회원가입 시 사용
+        // Firebase 토큰과 사용자 정보를 저장해서 회원가입 시 사용
         setData({
           socialType: "google",
           token: idToken,
+          email: result.user.email || '',
+          name: result.user.displayName || '',
+          profileImage: result.user.photoURL || '',
         });
-        toast.info("신규 사용자입니다. 회원가입을 진행해주세요.");
-        navigate({ to: "/auth/register", replace: true });
+        toast.info("회원가입이 필요합니다. 추가 정보를 입력해주세요.");
+        window.location.href = "http://localhost:3000/auth/register";
         return;
       }
 

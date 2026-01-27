@@ -55,8 +55,9 @@ export function RegisterWithSocialForm({ className }: Props) {
     "student" | "teacher" | "parent"
   >("student"); // 회원 유형
   const socialType = useSocialSignUp((state) => state.socialType);
-  useSocialSignUp;
   const socialToken = useSocialSignUp((state) => state.token);
+  const socialName = useSocialSignUp((state) => state.name);
+  const socialEmail = useSocialSignUp((state) => state.email);
   const clearSocialData = useSocialSignUp((state) => state.clearData);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -71,7 +72,7 @@ export function RegisterWithSocialForm({ className }: Props) {
   const form = useForm<z.infer<typeof registerWithSocialFormSchema>>({
     resolver: zodResolver(registerWithSocialFormSchema),
     defaultValues: {
-      name: "",
+      name: socialName || "",
       school: "",
       major: 0,
       graduateYear: 2025,
