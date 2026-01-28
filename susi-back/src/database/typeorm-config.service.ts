@@ -93,10 +93,14 @@ import { SusiSubjectCodeEntity } from './entities/susi/susi-subject-code.entity'
 // 2027학년도 수시 테이블
 import { SusiKyokwaCutEntity } from './entities/susi/susi-kyokwa-cut.entity';
 import { SusiKyokwaRecruitmentEntity } from './entities/susi/susi-kyokwa-recruitment.entity';
+import { SusiKyokwaIpkyulEntity } from './entities/susi/susi-kyokwa-ipkyul.entity';
 import { SusiKyokwaSpecialEntity } from './entities/susi/susi-kyokwa-special.entity';
 import { SusiJonghapIpkyulEntity } from './entities/susi/susi-jonghap-ipkyul.entity';
 import { SusiJonghapRecruitmentEntity } from './entities/susi/susi-jonghap-recruitment.entity';
 import { SusiJonghapSpecialEntity } from './entities/susi/susi-jonghap-special.entity';
+import { UniversityLevelEntity } from './entities/susi/university-level.entity';
+import { SeriesEvaluationCriteriaHumanitiesEntity } from './entities/susi/series-evaluation-criteria-humanities.entity';
+import { SeriesEvaluationCriteriaScienceEntity } from './entities/susi/series-evaluation-criteria-science.entity';
 
 @Injectable()
 export class TypeOrmConfigService implements TypeOrmOptionsFactory {
@@ -252,10 +256,16 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
         // 2027학년도 수시 테이블
         SusiKyokwaCutEntity, // 교과전형 입시결과
         SusiKyokwaRecruitmentEntity, // 교과전형 세부내역
+        SusiKyokwaIpkyulEntity, // 교과전형 입결(입시결과)
         SusiKyokwaSpecialEntity, // 교과전형 특별전형
         SusiJonghapIpkyulEntity, // 종합전형 입시결과
         SusiJonghapRecruitmentEntity, // 종합전형 세부내역
         SusiJonghapSpecialEntity, // 종합전형 특별전형
+
+        // 계열 적합성 진단 관련
+        UniversityLevelEntity, // 대학별 레벨
+        SeriesEvaluationCriteriaHumanitiesEntity, // 문과 계열 평가 기준
+        SeriesEvaluationCriteriaScienceEntity, // 이과 계열 평가 기준
       ],
     } as TypeOrmModuleOptions;
   }

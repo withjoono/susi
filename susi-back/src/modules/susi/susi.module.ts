@@ -29,6 +29,7 @@ import { SusiCalculationModule } from './calculation/susi-calculation.module';
 // 2027학년도 새 테이블 Entity
 import { SusiKyokwaCutEntity } from 'src/database/entities/susi/susi-kyokwa-cut.entity';
 import { SusiKyokwaRecruitmentEntity } from 'src/database/entities/susi/susi-kyokwa-recruitment.entity';
+import { SusiKyokwaIpkyulEntity } from 'src/database/entities/susi/susi-kyokwa-ipkyul.entity';
 import { SusiKyokwaSpecialEntity } from 'src/database/entities/susi/susi-kyokwa-special.entity';
 import { SusiJonghapIpkyulEntity } from 'src/database/entities/susi/susi-jonghap-ipkyul.entity';
 import { SusiJonghapRecruitmentEntity } from 'src/database/entities/susi/susi-jonghap-recruitment.entity';
@@ -39,6 +40,13 @@ import { SusiKyokwa2027Service } from './services/susi-kyokwa-2027.service';
 import { SusiKyokwa2027Controller } from './controllers/susi-kyokwa-2027.controller';
 import { SusiJonghap2027Service } from './services/susi-jonghap-2027.service';
 import { SusiJonghap2027Controller } from './controllers/susi-jonghap-2027.controller';
+
+// 계열 적합성 진단
+import { UniversityLevelEntity } from 'src/database/entities/susi/university-level.entity';
+import { SeriesEvaluationCriteriaHumanitiesEntity } from 'src/database/entities/susi/series-evaluation-criteria-humanities.entity';
+import { SeriesEvaluationCriteriaScienceEntity } from 'src/database/entities/susi/series-evaluation-criteria-science.entity';
+import { SeriesEvaluationController } from './controllers/series-evaluation.controller';
+import { SeriesEvaluationService } from './services/series-evaluation.service';
 
 @Module({
   imports: [
@@ -55,12 +63,18 @@ import { SusiJonghap2027Controller } from './controllers/susi-jonghap-2027.contr
       // 2027학년도 새 테이블
       SusiKyokwaCutEntity, // 교과전형 입시결과
       SusiKyokwaRecruitmentEntity, // 교과전형 세부내역
+      SusiKyokwaIpkyulEntity, // 교과전형 입결(입시결과)
       SusiKyokwaSpecialEntity, // 교과 일반/특별전형
       SusiJonghapIpkyulEntity, // 종합전형 입시결과
       SusiJonghapRecruitmentEntity, // 종합전형 세부내역
       SusiJonghapSpecialEntity, // 종합 일반/특별전형
 
       RecruitmentUnitPassFailRecordsEntity,
+
+      // 계열 적합성 진단
+      UniversityLevelEntity, // 대학별 레벨
+      SeriesEvaluationCriteriaHumanitiesEntity, // 문과 계열 평가 기준
+      SeriesEvaluationCriteriaScienceEntity, // 이과 계열 평가 기준
     ]),
   ],
   controllers: [
@@ -76,6 +90,9 @@ import { SusiJonghap2027Controller } from './controllers/susi-jonghap-2027.contr
     // 2027학년도 새 API
     SusiKyokwa2027Controller, // 2027 교과전형 API
     SusiJonghap2027Controller, // 2027 종합전형 API
+
+    // 계열 적합성 진단 API
+    SeriesEvaluationController,
   ],
   providers: [
     SusiSubjectService,
@@ -90,6 +107,9 @@ import { SusiJonghap2027Controller } from './controllers/susi-jonghap-2027.contr
     // 2027학년도 새 서비스
     SusiKyokwa2027Service, // 2027 교과전형 서비스
     SusiJonghap2027Service, // 2027 종합전형 서비스
+
+    // 계열 적합성 진단 서비스
+    SeriesEvaluationService,
   ],
   exports: [
     SusiSubjectService,
