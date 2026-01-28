@@ -66,16 +66,16 @@ function SusiCompatibility() {
 
   // 학생 성적 데이터 추출
   const studentGrades = useMemo(() => {
-    if (!schoolRecords?.subjectLearningList) return [];
+    if (!schoolRecords?.subjects || schoolRecords.subjects.length === 0) return [];
 
     // 과목별 평균 등급 계산
     const subjectGradeMap = new Map<string, number[]>();
 
-    schoolRecords.subjectLearningList.forEach((subject) => {
-      const subjectName = subject.subjectName;
-      const grade = parseFloat(subject.achievementGrade || "0");
+    schoolRecords.subjects.forEach((subject) => {
+      const subjectName = subject.subjectName || "";
+      const grade = parseFloat(subject.ranking || "0");
 
-      if (grade > 0) {
+      if (grade > 0 && subjectName) {
         if (!subjectGradeMap.has(subjectName)) {
           subjectGradeMap.set(subjectName, []);
         }
