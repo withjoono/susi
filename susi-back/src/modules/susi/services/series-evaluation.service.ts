@@ -472,24 +472,64 @@ export class SeriesEvaluationService {
             (req) => req.subjectType === 'inquiry',
           );
 
+          // 이과 탐구과목 평가를 위한 helper 함수
+          const evaluateInquirySubject = (req: any): SubjectRequirementDto => {
+            const taken = studentSubjectMap.has(req.subjectName);
+            const studentGrade = studentSubjectMap.get(req.subjectName) || null;
+
+            let evaluation: string = null;
+
+            if (taken && studentGrade) {
+              // DB 과목명 → criteria key 매핑
+              const subjectToCriteriaKey: Record<string, string> = {
+                '수학_확률과통계': 'statistics',
+                '수학_미적': 'calculus',
+                '수학_기하': 'geometry',
+                '물리학1': 'physics1',
+                '물리학2': 'physics2',
+                '화학1': 'chemistry1',
+                '화학2': 'chemistry2',
+                '생명과학1': 'biology1',
+                '생명과학2': 'biology2',
+                '지구과학1': 'earthScience1',
+                '지구과학2': 'earthScience2',
+              };
+
+              const criteriaKey = subjectToCriteriaKey[req.subjectName];
+              if (criteriaKey && criteria[criteriaKey]) {
+                const recommendedGrade = Number(criteria[criteriaKey]);
+                const difference = studentGrade - recommendedGrade;
+
+                if (difference <= 0) {
+                  evaluation = '우수';
+                } else if (difference <= 0.5) {
+                  evaluation = '적합';
+                } else if (difference <= 1.5) {
+                  evaluation = '주의';
+                } else {
+                  evaluation = '위험';
+                }
+              }
+            }
+
+            return {
+              subjectName: req.subjectName,
+              taken,
+              studentGrade,
+              evaluation,
+            };
+          };
+
           // 필수과목 (necessityLevel = 1)
           const required = inquirySubjects.filter((req) => req.necessityLevel === 1);
           if (required.length > 0) {
-            requiredSubjects = required.map((req) => ({
-              subjectName: req.subjectName,
-              taken: studentSubjectMap.has(req.subjectName),
-              studentGrade: studentSubjectMap.get(req.subjectName) || null,
-            }));
+            requiredSubjects = required.map(evaluateInquirySubject);
           }
 
           // 권장과목 (necessityLevel = 2)
           const recommended = inquirySubjects.filter((req) => req.necessityLevel === 2);
           if (recommended.length > 0) {
-            recommendedSubjects = recommended.map((req) => ({
-              subjectName: req.subjectName,
-              taken: studentSubjectMap.has(req.subjectName),
-              studentGrade: studentSubjectMap.get(req.subjectName) || null,
-            }));
+            recommendedSubjects = recommended.map(evaluateInquirySubject);
           }
         } else {
           // 문과: 주요교과 사용 (major), necessityLevel 1 또는 2인 것
@@ -513,10 +553,42 @@ export class SeriesEvaluationService {
                 ? grades.reduce((sum, g) => sum + g, 0) / grades.length
                 : null;
 
+              let evaluation: string = null;
+
+              if (avgGrade) {
+                // DB 교과명 → criteria key 매핑
+                const subjectToCriteriaKey: Record<string, string> = {
+                  '국어': 'korean',
+                  '수학': 'math',
+                  '영어': 'english',
+                  '사회': 'social',
+                  '과학': 'science',
+                  '한국사': 'koreanHistory',
+                  '제2외': 'secondForeignLanguage',
+                };
+
+                const criteriaKey = subjectToCriteriaKey[subjectName];
+                if (criteriaKey && criteria[criteriaKey]) {
+                  const recommendedGrade = Number(criteria[criteriaKey]);
+                  const difference = avgGrade - recommendedGrade;
+
+                  if (difference <= 0) {
+                    evaluation = '우수';
+                  } else if (difference <= 0.5) {
+                    evaluation = '적합';
+                  } else if (difference <= 1.5) {
+                    evaluation = '주의';
+                  } else {
+                    evaluation = '위험';
+                  }
+                }
+              }
+
               return {
                 subjectName,
                 taken: grades.length > 0,
                 studentGrade: avgGrade,
+                evaluation,
               };
             });
           }

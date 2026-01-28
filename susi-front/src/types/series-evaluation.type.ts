@@ -90,6 +90,7 @@ export interface SubjectRequirement {
   subjectName: string;
   taken: boolean;
   studentGrade?: number;
+  evaluation?: string;
 }
 
 /**

@@ -103,6 +103,7 @@ export function SeriesEvaluationResult({
                     <th className="p-3 text-left">과목명</th>
                     <th className="p-3 text-center">수강 여부</th>
                     <th className="p-3 text-center">내 등급</th>
+                    <th className="p-3 text-center">평가</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -122,6 +123,14 @@ export function SeriesEvaluationResult({
                       </td>
                       <td className="p-3 text-center font-semibold">
                         {subject.studentGrade ? subject.studentGrade.toFixed(1) : "-"}
+                      </td>
+                      <td
+                        className={cn(
+                          "p-3 text-center font-semibold",
+                          subject.evaluation ? getEvaluationColor(subject.evaluation) : "text-gray-400"
+                        )}
+                      >
+                        {subject.evaluation || "-"}
                       </td>
                     </tr>
                   ))}
@@ -155,6 +164,7 @@ export function SeriesEvaluationResult({
                     <th className="p-3 text-left">과목명</th>
                     <th className="p-3 text-center">수강 여부</th>
                     <th className="p-3 text-center">내 등급</th>
+                    <th className="p-3 text-center">평가</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -174,6 +184,14 @@ export function SeriesEvaluationResult({
                       </td>
                       <td className="p-3 text-center font-semibold">
                         {subject.studentGrade ? subject.studentGrade.toFixed(1) : "-"}
+                      </td>
+                      <td
+                        className={cn(
+                          "p-3 text-center font-semibold",
+                          subject.evaluation ? getEvaluationColor(subject.evaluation) : "text-gray-400"
+                        )}
+                      >
+                        {subject.evaluation || "-"}
                       </td>
                     </tr>
                   ))}
@@ -210,38 +228,22 @@ export function SeriesEvaluationResult({
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {result.requiredSubjects.map((subject, idx) => {
-                    // 등급에 따른 평가 계산
-                    let evaluation = "-";
-                    if (subject.studentGrade) {
-                      if (subject.studentGrade <= 2.0) {
-                        evaluation = "우수";
-                      } else if (subject.studentGrade <= 3.0) {
-                        evaluation = "적합";
-                      } else if (subject.studentGrade <= 4.0) {
-                        evaluation = "주의";
-                      } else {
-                        evaluation = "위험";
-                      }
-                    }
-
-                    return (
-                      <tr key={idx} className="hover:bg-slate-50">
-                        <td className="p-3 font-medium">{subject.subjectName}</td>
-                        <td className="p-3 text-center font-semibold">
-                          {subject.studentGrade ? subject.studentGrade.toFixed(1) : "-"}
-                        </td>
-                        <td
-                          className={cn(
-                            "p-3 text-center font-semibold",
-                            getEvaluationColor(evaluation)
-                          )}
-                        >
-                          {evaluation}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {result.requiredSubjects.map((subject, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50">
+                      <td className="p-3 font-medium">{subject.subjectName}</td>
+                      <td className="p-3 text-center font-semibold">
+                        {subject.studentGrade ? subject.studentGrade.toFixed(1) : "-"}
+                      </td>
+                      <td
+                        className={cn(
+                          "p-3 text-center font-semibold",
+                          subject.evaluation ? getEvaluationColor(subject.evaluation) : "text-gray-400"
+                        )}
+                      >
+                        {subject.evaluation || "-"}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -249,21 +251,18 @@ export function SeriesEvaluationResult({
         </Card>
       )}
 
-      {/* 참조교과 (과목별 상세 평가) */}
+      {/* 참조교과 (교과별 평균등급) */}
       <Card>
         <CardHeader>
-          <CardTitle>참조교과 (과목별 상세 평가)</CardTitle>
+          <CardTitle>참조교과 (교과별 평균등급)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="border-b bg-slate-100">
                 <tr>
-                  <th className="p-3 text-left">과목</th>
-                  <th className="p-3 text-center">내 등급</th>
-                  <th className="p-3 text-center">권장 등급</th>
-                  <th className="p-3 text-center">차이</th>
-                  <th className="p-3 text-center">위험도</th>
+                  <th className="p-3 text-left">교과</th>
+                  <th className="p-3 text-center">내 등급평균</th>
                   <th className="p-3 text-center">평가</th>
                 </tr>
               </thead>
@@ -273,25 +272,6 @@ export function SeriesEvaluationResult({
                     <td className="p-3 font-medium">{subject.subjectName}</td>
                     <td className="p-3 text-center font-semibold">
                       {subject.studentGrade.toFixed(1)}
-                    </td>
-                    <td className="p-3 text-center">
-                      {subject.recommendedGrade.toFixed(1)}
-                    </td>
-                    <td
-                      className={cn(
-                        "p-3 text-center font-semibold",
-                        subject.difference > 0
-                          ? "text-red-600"
-                          : subject.difference < 0
-                            ? "text-green-600"
-                            : "text-gray-600"
-                      )}
-                    >
-                      {subject.difference > 0 ? "+" : ""}
-                      {subject.difference.toFixed(1)}
-                    </td>
-                    <td className="p-3 text-center">
-                      <RiskBadge risk={subject.riskScore} />
                     </td>
                     <td
                       className={cn(

@@ -194,6 +194,9 @@ export class SubjectRequirementDto {
 
   @ApiProperty({ description: '학생 등급 (수강한 경우)', nullable: true })
   studentGrade?: number;
+
+  @ApiProperty({ description: '평가 (우수/적합/주의/위험)', nullable: true })
+  evaluation?: string;
 }
 
 /**
