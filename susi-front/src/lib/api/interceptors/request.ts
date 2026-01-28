@@ -1,16 +1,16 @@
 /**
  * Request 인터셉터
- * Reference 프로젝트의 패턴 적용
+ * Reference 프로젝트의 패턴 적용 (일부 수정)
+ * Note: NestJS 백엔드는 camelCase를 기대하므로 케이스 변환하지 않음
  */
 
 import { InternalAxiosRequestConfig } from 'axios';
-import { decamelizeKeys } from 'humps';
 import { getAccessToken } from '../token-manager';
 
 /**
  * 인증 Request 인터셉터
  * - Authorization 헤더에 Bearer 토큰 추가
- * - 데이터를 snake_case로 변환
+ * - NestJS 백엔드는 camelCase를 기대하므로 케이스 변환하지 않음
  */
 export const authRequestInterceptor = (
   config: InternalAxiosRequestConfig,
@@ -21,13 +21,9 @@ export const authRequestInterceptor = (
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  // 데이터를 snake_case로 변환 (FormData는 제외)
-  if (config.data && !(config.data instanceof FormData)) {
-    config.data = decamelizeKeys(config.data);
-  }
-  if (config.params) {
-    config.params = decamelizeKeys(config.params);
-  }
+  // NestJS 백엔드는 camelCase를 기대하므로 데이터 변환하지 않음
+  // (Reference 프로젝트는 Spring 백엔드로 snake_case 사용했으나,
+  // 이 프로젝트는 NestJS 백엔드로 camelCase 사용)
 
   return config;
 };
