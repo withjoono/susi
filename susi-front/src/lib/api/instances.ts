@@ -110,8 +110,16 @@ publicClient.interceptors.response.use(
 
 /**
  * 케이스 변환 인터셉터 (authClient)
- * NestJS 백엔드 응답을 camelCase로 변환
+ * NestJS 백엔드는 camelCase를 기대하므로 request는 변환하지 않음
  */
+authClient.interceptors.request.use(
+  (config) => {
+    // NestJS는 camelCase를 기대하므로 변환하지 않음
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
 authClient.interceptors.response.use(
   (response) => {
     // Response 데이터를 camelCase로 변환
