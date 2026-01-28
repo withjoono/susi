@@ -197,26 +197,162 @@ export class SeriesEvaluationService {
       };
     }
 
-    // 3. 과목별 평가
+    // 3. 과목을 교과별로 그룹화하고 평균 계산
+    // 3-1. 과목명 → 교과명 매핑
+    const subjectToCategoryMapping: Record<string, string> = {
+      // 국어
+      국어: '국어',
+      '국어Ⅰ': '국어',
+      '국어I': '국어',
+      '국어Ⅱ': '국어',
+      '국어II': '국어',
+      문학: '국어',
+      독서: '국어',
+      '화법과 작문': '국어',
+      '언어와 매체': '국어',
+
+      // 수학
+      수학: '수학',
+      '수학Ⅰ': '수학',
+      '수학I': '수학',
+      '수학Ⅱ': '수학',
+      '수학II': '수학',
+      확률과통계: '수학',
+      '확률과 통계': '수학',
+      미적분: '수학',
+      기하: '수학',
+      '인공지능 수학': '수학',
+
+      // 영어
+      영어: '영어',
+      '영어Ⅰ': '영어',
+      '영어I': '영어',
+      '영어Ⅱ': '영어',
+      '영어II': '영어',
+      '영어 독해와 작문': '영어',
+      '영어 회화': '영어',
+
+      // 사회
+      사회: '사회',
+      통합사회: '사회',
+      한국지리: '사회',
+      세계지리: '사회',
+      세계사: '사회',
+      동아시아사: '사회',
+      경제: '사회',
+      정치와법: '사회',
+      '정치와 법': '사회',
+      사회문화: '사회',
+      '사회·문화': '사회',
+      생활과윤리: '사회',
+      윤리와사상: '사회',
+
+      // 과학
+      과학: '과학',
+      통합과학: '과학',
+      물리I: '과학',
+      물리Ⅰ: '과학',
+      '물리학I': '과학',
+      '물리학Ⅰ': '과학',
+      물리II: '과학',
+      물리Ⅱ: '과학',
+      '물리학II': '과학',
+      '물리학Ⅱ': '과학',
+      화학I: '과학',
+      화학Ⅰ: '과학',
+      화학II: '과학',
+      화학Ⅱ: '과학',
+      생명과학I: '과학',
+      생명과학Ⅰ: '과학',
+      생명과학II: '과학',
+      생명과학Ⅱ: '과학',
+      지구과학I: '과학',
+      지구과학Ⅰ: '과학',
+      지구과학II: '과학',
+      지구과학Ⅱ: '과학',
+
+      // 제2외국어
+      일본어: '제2외국어',
+      '일본어Ⅰ': '제2외국어',
+      '일본어I': '제2외국어',
+      '일본어Ⅱ': '제2외국어',
+      '일본어II': '제2외국어',
+      중국어: '제2외국어',
+      '중국어Ⅰ': '제2외국어',
+      '중국어I': '제2외국어',
+      '중국어Ⅱ': '제2외국어',
+      '중국어II': '제2외국어',
+      독일어: '제2외국어',
+      '독일어Ⅰ': '제2외국어',
+      '독일어I': '제2외국어',
+      '독일어Ⅱ': '제2외국어',
+      '독일어II': '제2외국어',
+      프랑스어: '제2외국어',
+      '프랑스어Ⅰ': '제2외국어',
+      '프랑스어I': '제2외국어',
+      '프랑스어Ⅱ': '제2외국어',
+      '프랑스어II': '제2외국어',
+      스페인어: '제2외국어',
+      '스페인어Ⅰ': '제2외국어',
+      '스페인어I': '제2외국어',
+      '스페인어Ⅱ': '제2외국어',
+      '스페인어II': '제2외국어',
+      러시아어: '제2외국어',
+      '러시아어Ⅰ': '제2외국어',
+      '러시아어I': '제2외국어',
+      '러시아어Ⅱ': '제2외국어',
+      '러시아어II': '제2외국어',
+      아랍어: '제2외국어',
+      '아랍어Ⅰ': '제2외국어',
+      '아랍어I': '제2외국어',
+      '아랍어Ⅱ': '제2외국어',
+      '아랍어II': '제2외국어',
+      베트남어: '제2외국어',
+      '베트남어Ⅰ': '제2외국어',
+      '베트남어I': '제2외국어',
+      '베트남어Ⅱ': '제2외국어',
+      '베트남어II': '제2외국어',
+      한문: '제2외국어',
+      '한문Ⅰ': '제2외국어',
+      '한문I': '제2외국어',
+      '한문Ⅱ': '제2외국어',
+      '한문II': '제2외국어',
+    };
+
+    // 3-2. 교과별 등급 수집
+    const categoryGrades = new Map<string, number[]>();
+
+    for (const studentGrade of dto.studentGrades) {
+      const category = subjectToCategoryMapping[studentGrade.subjectName];
+      if (!category) {
+        continue; // 매핑되지 않은 과목은 건너뛰기
+      }
+
+      if (!categoryGrades.has(category)) {
+        categoryGrades.set(category, []);
+      }
+      categoryGrades.get(category)!.push(studentGrade.grade);
+    }
+
+    // 3-3. 교과별 평균 등급 계산 및 평가
     const subjectEvaluations: SubjectEvaluationDto[] = [];
     let totalRiskScore = 0;
     const improvementNeeded: string[] = [];
 
-    for (const studentGrade of dto.studentGrades) {
-      const criteriaKey = subjectMapping[studentGrade.subjectName];
+    for (const [category, grades] of categoryGrades.entries()) {
+      // 평균 등급 계산
+      const avgGrade = grades.reduce((sum, g) => sum + g, 0) / grades.length;
+
+      // 평가 기준에서 권장 등급 가져오기
+      const criteriaKey = subjectMapping[category];
       if (!criteriaKey) {
-        continue; // 매핑되지 않은 과목은 건너뛰기
+        continue; // 평가 기준에 없는 교과는 건너뛰기
       }
 
       const recommendedGrade = Number(criteria[criteriaKey]);
-      const difference = studentGrade.grade - recommendedGrade;
+      const difference = avgGrade - recommendedGrade;
 
       // 위험도 계산: 차이가 클수록 높은 점수
-      // 0 이하 (권장보다 좋음): 0점
-      // 0~1: 10점
-      // 1~2: 30점
-      // 2~3: 50점
-      // 3 이상: 70점
       let riskScore = 0;
       if (difference <= 0) {
         riskScore = 0;
@@ -240,12 +376,12 @@ export class SeriesEvaluationService {
         evaluation = '주의';
       } else {
         evaluation = '위험';
-        improvementNeeded.push(studentGrade.subjectName);
+        improvementNeeded.push(category);
       }
 
       subjectEvaluations.push({
-        subjectName: studentGrade.subjectName,
-        studentGrade: studentGrade.grade,
+        subjectName: category,
+        studentGrade: Number(avgGrade.toFixed(1)),
         recommendedGrade,
         difference: Number(difference.toFixed(1)),
         riskScore,

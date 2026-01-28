@@ -160,13 +160,13 @@ export class CalculateSeriesEvaluationRequestDto {
 }
 
 /**
- * 과목별 평가 결과
+ * 교과별 평가 결과 (참조교과용)
  */
 export class SubjectEvaluationDto {
-  @ApiProperty({ description: '과목명' })
+  @ApiProperty({ description: '교과명' })
   subjectName: string;
 
-  @ApiProperty({ description: '학생 등급' })
+  @ApiProperty({ description: '학생 평균 등급' })
   studentGrade: number;
 
   @ApiProperty({ description: '권장 등급' })
