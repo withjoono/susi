@@ -197,8 +197,231 @@ export class SeriesEvaluationService {
       };
     }
 
-    // 3. 과목을 교과별로 그룹화하고 평균 계산
-    // 3-1. 과목명 → 교과명 매핑
+    // 3. 필수/권장 과목 조회 및 평가 (총 위험도 계산에 포함)
+    let requiredSubjects: SubjectRequirementDto[] = null;
+    let recommendedSubjects: SubjectRequirementDto[] = null;
+    let hasDisqualification = false; // 결격 여부
+    let requiredRecommendedRiskScore = 0; // 필수/권장 과목 위험도
+
+    if (dto.middleSeries) {
+      // SusiCategorySubjectNecessityEntity에서 중계열에 해당하는 과목 조회
+      const categoryRequirements = await this.categorySubjectNecessityRepository.find({
+        where: {
+          midField: dto.middleSeries,
+        },
+      });
+
+      if (categoryRequirements.length > 0) {
+        // 과목명 매핑 함수 (학생부 과목명 → DB 과목명)
+        const normalizeSubjectName = (studentSubject: string): string => {
+          const mapping: Record<string, string> = {
+            // 수학 과목
+            '확률과 통계': '수학_확률과통계',
+            '확률과통계': '수학_확률과통계',
+            '미적분': '수학_미적',
+            '기하': '수학_기하',
+            // 과학 과목 (로마숫자 → 아라비아숫자)
+            '물리학Ⅰ': '물리학1',
+            '물리학I': '물리학1',
+            '물리학Ⅱ': '물리학2',
+            '물리학II': '물리학2',
+            '화학Ⅰ': '화학1',
+            '화학I': '화학1',
+            '화학Ⅱ': '화학2',
+            '화학II': '화학2',
+            '생명과학Ⅰ': '생명과학1',
+            '생명과학I': '생명과학1',
+            '생명과학Ⅱ': '생명과학2',
+            '생명과학II': '생명과학2',
+            '지구과학Ⅰ': '지구과학1',
+            '지구과학I': '지구과학1',
+            '지구과학Ⅱ': '지구과학2',
+            '지구과학II': '지구과학2',
+            // 주요교과는 그대로
+            '국어': '국어',
+            '수학': '수학',
+            '영어': '영어',
+            '사회': '사회',
+            '통합사회': '사회',
+            '과학': '과학',
+            '통합과학': '과학',
+            '한국사': '한국사',
+          };
+          return mapping[studentSubject] || studentSubject;
+        };
+
+        // 학생이 수강한 과목 목록 (정규화된 과목명으로 매핑)
+        const studentSubjectMap = new Map<string, number>();
+        dto.studentGrades.forEach((sg) => {
+          const normalizedName = normalizeSubjectName(sg.subjectName);
+          studentSubjectMap.set(normalizedName, sg.grade);
+        });
+
+        if (dto.seriesType === SeriesType.SCIENCE) {
+          // 이과: 탐구과목만 사용 (inquiry)
+          const inquirySubjects = categoryRequirements.filter(
+            (req) => req.subjectType === 'inquiry',
+          );
+
+          // 이과 탐구과목 평가를 위한 helper 함수
+          const evaluateInquirySubject = (req: any, isRequired: boolean): SubjectRequirementDto => {
+            const taken = studentSubjectMap.has(req.subjectName);
+            const studentGrade = studentSubjectMap.get(req.subjectName) || null;
+
+            let evaluation: string = null;
+            let riskScore = 0;
+
+            if (!taken) {
+              // 미수강 시
+              if (isRequired) {
+                evaluation = '결격'; // 필수과목 미수강 → 결격
+                riskScore = 100; // 결격 → 최고 위험도
+                hasDisqualification = true;
+              }
+              // 권장과목 미수강 → null (평가 안 함)
+            } else if (studentGrade) {
+              // 수강했지만 등급 평가
+              // DB 과목명 → criteria key 매핑
+              const subjectToCriteriaKey: Record<string, string> = {
+                '수학_확률과통계': 'statistics',
+                '수학_미적': 'calculus',
+                '수학_기하': 'geometry',
+                '물리학1': 'physics1',
+                '물리학2': 'physics2',
+                '화학1': 'chemistry1',
+                '화학2': 'chemistry2',
+                '생명과학1': 'biology1',
+                '생명과학2': 'biology2',
+                '지구과학1': 'earthScience1',
+                '지구과학2': 'earthScience2',
+              };
+
+              const criteriaKey = subjectToCriteriaKey[req.subjectName];
+              if (criteriaKey && criteria[criteriaKey]) {
+                const recommendedGrade = Number(criteria[criteriaKey]);
+                const difference = studentGrade - recommendedGrade;
+
+                if (difference <= 0) {
+                  evaluation = '우수';
+                  riskScore = 0;
+                } else if (difference <= 0.5) {
+                  evaluation = '적합';
+                  riskScore = 10;
+                } else if (difference <= 1.5) {
+                  evaluation = '주의';
+                  riskScore = 30;
+                } else {
+                  evaluation = '위험';
+                  riskScore = 70;
+                }
+              }
+            }
+
+            requiredRecommendedRiskScore += riskScore;
+
+            return {
+              subjectName: req.subjectName,
+              taken,
+              studentGrade,
+              evaluation,
+            };
+          };
+
+          // 필수과목 (necessityLevel = 1)
+          const required = inquirySubjects.filter((req) => req.necessityLevel === 1);
+          if (required.length > 0) {
+            requiredSubjects = required.map((req) => evaluateInquirySubject(req, true));
+          }
+
+          // 권장과목 (necessityLevel = 2)
+          const recommended = inquirySubjects.filter((req) => req.necessityLevel === 2);
+          if (recommended.length > 0) {
+            recommendedSubjects = recommended.map((req) => evaluateInquirySubject(req, false));
+          }
+        } else {
+          // 문과: 주요교과 사용 (major), necessityLevel 1 또는 2인 것
+          const majorSubjects = categoryRequirements.filter(
+            (req) => req.subjectType === 'major' && (req.necessityLevel === 1 || req.necessityLevel === 2),
+          );
+
+          if (majorSubjects.length > 0) {
+            // 문과는 필수/권장 구분 없이 주요교과로 통합 표시
+            requiredSubjects = majorSubjects.map((req) => {
+              const grades = [];
+              const subjectName = req.subjectName;
+              const isRequired = req.necessityLevel === 1;
+
+              // 해당 교과의 모든 과목 등급 수집
+              if (studentSubjectMap.has(subjectName)) {
+                grades.push(studentSubjectMap.get(subjectName));
+              }
+
+              // 평균 계산
+              const avgGrade = grades.length > 0
+                ? grades.reduce((sum, g) => sum + g, 0) / grades.length
+                : null;
+
+              let evaluation: string = null;
+              let riskScore = 0;
+
+              if (!avgGrade) {
+                // 미수강 시
+                if (isRequired) {
+                  evaluation = '결격'; // 필수교과 미수강 → 결격
+                  riskScore = 100; // 결격 → 최고 위험도
+                  hasDisqualification = true;
+                }
+                // 권장교과 미수강 → null (평가 안 함)
+              } else {
+                // 수강했지만 등급 평가
+                // DB 교과명 → criteria key 매핑
+                const subjectToCriteriaKey: Record<string, string> = {
+                  '국어': 'korean',
+                  '수학': 'math',
+                  '영어': 'english',
+                  '사회': 'social',
+                  '과학': 'science',
+                  '한국사': 'koreanHistory',
+                  '제2외': 'secondForeignLanguage',
+                };
+
+                const criteriaKey = subjectToCriteriaKey[subjectName];
+                if (criteriaKey && criteria[criteriaKey]) {
+                  const recommendedGrade = Number(criteria[criteriaKey]);
+                  const difference = avgGrade - recommendedGrade;
+
+                  if (difference <= 0) {
+                    evaluation = '우수';
+                    riskScore = 0;
+                  } else if (difference <= 0.5) {
+                    evaluation = '적합';
+                    riskScore = 10;
+                  } else if (difference <= 1.5) {
+                    evaluation = '주의';
+                    riskScore = 30;
+                  } else {
+                    evaluation = '위험';
+                    riskScore = 70;
+                  }
+                }
+              }
+
+              requiredRecommendedRiskScore += riskScore;
+
+              return {
+                subjectName,
+                taken: grades.length > 0,
+                studentGrade: avgGrade,
+                evaluation,
+              };
+            });
+          }
+        }
+      }
+    }
+
+    // 4. 참조교과: 과목을 교과별로 그룹화하고 평균 계산
+    // 4-1. 과목명 → 교과명 매핑
     const subjectToCategoryMapping: Record<string, string> = {
       // 국어
       국어: '국어',
@@ -319,7 +542,7 @@ export class SeriesEvaluationService {
       '한문II': '제2외국어',
     };
 
-    // 3-2. 교과별 등급 수집
+    // 4-2. 교과별 등급 수집
     const categoryGrades = new Map<string, number[]>();
 
     for (const studentGrade of dto.studentGrades) {
@@ -334,9 +557,9 @@ export class SeriesEvaluationService {
       categoryGrades.get(category)!.push(studentGrade.grade);
     }
 
-    // 3-3. 교과별 평균 등급 계산 및 평가
+    // 4-3. 교과별 평균 등급 계산 및 평가
     const subjectEvaluations: SubjectEvaluationDto[] = [];
-    let totalRiskScore = 0;
+    let referenceSubjectRiskScore = 0; // 참조교과 위험도
     const improvementNeeded: string[] = [];
 
     for (const [category, grades] of categoryGrades.entries()) {
@@ -388,227 +611,37 @@ export class SeriesEvaluationService {
         evaluation,
       });
 
-      totalRiskScore += riskScore;
+      referenceSubjectRiskScore += riskScore;
     }
 
-    // 4. 총 위험도 정규화 (0-100)
-    const maxPossibleRisk = subjectEvaluations.length * 70;
+    // 5. 총 위험도 계산 (필수/권장 + 참조교과)
+    const totalRiskScore = requiredRecommendedRiskScore + referenceSubjectRiskScore;
+
+    // 필수/권장 과목 개수 + 참조교과 개수
+    const requiredCount = requiredSubjects ? requiredSubjects.length : 0;
+    const recommendedCount = recommendedSubjects ? recommendedSubjects.length : 0;
+    const referenceCount = subjectEvaluations.length;
+    const totalSubjectCount = requiredCount + recommendedCount + referenceCount;
+
+    // 5-1. 총 위험도 정규화 (0-100)
+    // 최대 가능 위험도: 결격(100) 또는 위험(70)이 최대
+    const maxPossibleRisk = totalSubjectCount * 100; // 모두 결격이라고 가정한 최대값
     const normalizedRisk =
       maxPossibleRisk > 0
         ? Math.round((totalRiskScore / maxPossibleRisk) * 100)
         : 0;
 
-    // 5. 총 평가
+    // 5-2. 총 평가
     let overallEvaluation = '안전';
-    if (normalizedRisk < 20) {
+    if (hasDisqualification) {
+      // 필수과목/교과 결격이 하나라도 있으면 무조건 "결격"
+      overallEvaluation = '결격';
+    } else if (normalizedRisk < 20) {
       overallEvaluation = '안전';
     } else if (normalizedRisk < 50) {
       overallEvaluation = '주의';
     } else {
       overallEvaluation = '위험';
-    }
-
-    // 6. 중계열별 필수/권장 과목 요구사항 조회
-    let requiredSubjects: SubjectRequirementDto[] = null;
-    let recommendedSubjects: SubjectRequirementDto[] = null;
-
-    if (dto.middleSeries) {
-      // SusiCategorySubjectNecessityEntity에서 중계열에 해당하는 과목 조회
-      const categoryRequirements = await this.categorySubjectNecessityRepository.find({
-        where: {
-          midField: dto.middleSeries,
-        },
-      });
-
-      if (categoryRequirements.length > 0) {
-        // 과목명 매핑 함수 (학생부 과목명 → DB 과목명)
-        const normalizeSubjectName = (studentSubject: string): string => {
-          const mapping: Record<string, string> = {
-            // 수학 과목
-            '확률과 통계': '수학_확률과통계',
-            '확률과통계': '수학_확률과통계',
-            '미적분': '수학_미적',
-            '기하': '수학_기하',
-            // 과학 과목 (로마숫자 → 아라비아숫자)
-            '물리학Ⅰ': '물리학1',
-            '물리학I': '물리학1',
-            '물리학Ⅱ': '물리학2',
-            '물리학II': '물리학2',
-            '화학Ⅰ': '화학1',
-            '화학I': '화학1',
-            '화학Ⅱ': '화학2',
-            '화학II': '화학2',
-            '생명과학Ⅰ': '생명과학1',
-            '생명과학I': '생명과학1',
-            '생명과학Ⅱ': '생명과학2',
-            '생명과학II': '생명과학2',
-            '지구과학Ⅰ': '지구과학1',
-            '지구과학I': '지구과학1',
-            '지구과학Ⅱ': '지구과학2',
-            '지구과학II': '지구과학2',
-            // 주요교과는 그대로
-            '국어': '국어',
-            '수학': '수학',
-            '영어': '영어',
-            '사회': '사회',
-            '통합사회': '사회',
-            '과학': '과학',
-            '통합과학': '과학',
-            '한국사': '한국사',
-          };
-          return mapping[studentSubject] || studentSubject;
-        };
-
-        // 학생이 수강한 과목 목록 (정규화된 과목명으로 매핑)
-        const studentSubjectMap = new Map<string, number>();
-        dto.studentGrades.forEach((sg) => {
-          const normalizedName = normalizeSubjectName(sg.subjectName);
-          studentSubjectMap.set(normalizedName, sg.grade);
-        });
-
-        if (dto.seriesType === SeriesType.SCIENCE) {
-          // 이과: 탐구과목만 사용 (inquiry)
-          const inquirySubjects = categoryRequirements.filter(
-            (req) => req.subjectType === 'inquiry',
-          );
-
-          // 이과 탐구과목 평가를 위한 helper 함수
-          const evaluateInquirySubject = (req: any, isRequired: boolean): SubjectRequirementDto => {
-            const taken = studentSubjectMap.has(req.subjectName);
-            const studentGrade = studentSubjectMap.get(req.subjectName) || null;
-
-            let evaluation: string = null;
-
-            if (!taken) {
-              // 미수강 시
-              if (isRequired) {
-                evaluation = '결격'; // 필수과목 미수강 → 결격
-              }
-              // 권장과목 미수강 → null (평가 안 함)
-            } else if (studentGrade) {
-              // 수강했지만 등급 평가
-              // DB 과목명 → criteria key 매핑
-              const subjectToCriteriaKey: Record<string, string> = {
-                '수학_확률과통계': 'statistics',
-                '수학_미적': 'calculus',
-                '수학_기하': 'geometry',
-                '물리학1': 'physics1',
-                '물리학2': 'physics2',
-                '화학1': 'chemistry1',
-                '화학2': 'chemistry2',
-                '생명과학1': 'biology1',
-                '생명과학2': 'biology2',
-                '지구과학1': 'earthScience1',
-                '지구과학2': 'earthScience2',
-              };
-
-              const criteriaKey = subjectToCriteriaKey[req.subjectName];
-              if (criteriaKey && criteria[criteriaKey]) {
-                const recommendedGrade = Number(criteria[criteriaKey]);
-                const difference = studentGrade - recommendedGrade;
-
-                if (difference <= 0) {
-                  evaluation = '우수';
-                } else if (difference <= 0.5) {
-                  evaluation = '적합';
-                } else if (difference <= 1.5) {
-                  evaluation = '주의';
-                } else {
-                  evaluation = '위험';
-                }
-              }
-            }
-
-            return {
-              subjectName: req.subjectName,
-              taken,
-              studentGrade,
-              evaluation,
-            };
-          };
-
-          // 필수과목 (necessityLevel = 1)
-          const required = inquirySubjects.filter((req) => req.necessityLevel === 1);
-          if (required.length > 0) {
-            requiredSubjects = required.map((req) => evaluateInquirySubject(req, true));
-          }
-
-          // 권장과목 (necessityLevel = 2)
-          const recommended = inquirySubjects.filter((req) => req.necessityLevel === 2);
-          if (recommended.length > 0) {
-            recommendedSubjects = recommended.map((req) => evaluateInquirySubject(req, false));
-          }
-        } else {
-          // 문과: 주요교과 사용 (major), necessityLevel 1 또는 2인 것
-          const majorSubjects = categoryRequirements.filter(
-            (req) => req.subjectType === 'major' && (req.necessityLevel === 1 || req.necessityLevel === 2),
-          );
-
-          if (majorSubjects.length > 0) {
-            // 문과는 필수/권장 구분 없이 주요교과로 통합 표시
-            requiredSubjects = majorSubjects.map((req) => {
-              const grades = [];
-              const subjectName = req.subjectName;
-              const isRequired = req.necessityLevel === 1;
-
-              // 해당 교과의 모든 과목 등급 수집
-              if (studentSubjectMap.has(subjectName)) {
-                grades.push(studentSubjectMap.get(subjectName));
-              }
-
-              // 평균 계산
-              const avgGrade = grades.length > 0
-                ? grades.reduce((sum, g) => sum + g, 0) / grades.length
-                : null;
-
-              let evaluation: string = null;
-
-              if (!avgGrade) {
-                // 미수강 시
-                if (isRequired) {
-                  evaluation = '결격'; // 필수교과 미수강 → 결격
-                }
-                // 권장교과 미수강 → null (평가 안 함)
-              } else {
-                // 수강했지만 등급 평가
-                // DB 교과명 → criteria key 매핑
-                const subjectToCriteriaKey: Record<string, string> = {
-                  '국어': 'korean',
-                  '수학': 'math',
-                  '영어': 'english',
-                  '사회': 'social',
-                  '과학': 'science',
-                  '한국사': 'koreanHistory',
-                  '제2외': 'secondForeignLanguage',
-                };
-
-                const criteriaKey = subjectToCriteriaKey[subjectName];
-                if (criteriaKey && criteria[criteriaKey]) {
-                  const recommendedGrade = Number(criteria[criteriaKey]);
-                  const difference = avgGrade - recommendedGrade;
-
-                  if (difference <= 0) {
-                    evaluation = '우수';
-                  } else if (difference <= 0.5) {
-                    evaluation = '적합';
-                  } else if (difference <= 1.5) {
-                    evaluation = '주의';
-                  } else {
-                    evaluation = '위험';
-                  }
-                }
-              }
-
-              return {
-                subjectName,
-                taken: grades.length > 0,
-                studentGrade: avgGrade,
-                evaluation,
-              };
-            });
-          }
-        }
-      }
     }
 
     return {
