@@ -67,6 +67,7 @@ export interface StudentSubjectGrade {
 export interface CalculateSeriesEvaluationRequest {
   universityName: string;
   seriesType: SeriesType;
+  middleSeries?: string;
   studentGrades: StudentSubjectGrade[];
 }
 

@@ -91,12 +91,18 @@ export class SeriesEvaluationService {
     // 1. 대학 레벨 조회
     const university = await this.getUniversityLevel(dto.universityName);
 
+    // 1-1. 중계열이 의약 또는 약학인 경우 레벨 7로 강제 설정
+    const medicalSeries = ['의약', '약학'];
+    const finalLevel = dto.middleSeries && medicalSeries.includes(dto.middleSeries)
+      ? 7
+      : university.level;
+
     // 2. 평가 기준 조회
     let criteria: any;
     let subjectMapping: Record<string, string>;
 
     if (dto.seriesType === SeriesType.HUMANITIES) {
-      criteria = await this.getHumanitiesCriteria(university.level);
+      criteria = await this.getHumanitiesCriteria(finalLevel);
       subjectMapping = {
         국어: 'korean',
         영어: 'english',
@@ -105,7 +111,7 @@ export class SeriesEvaluationService {
         제2외국어: 'secondForeignLanguage',
       };
     } else {
-      criteria = await this.getScienceCriteria(university.level);
+      criteria = await this.getScienceCriteria(finalLevel);
       subjectMapping = {
         확률과통계: 'statistics',
         미적분: 'calculus',
@@ -199,7 +205,7 @@ export class SeriesEvaluationService {
 
     return {
       universityName: dto.universityName,
-      universityLevel: university.level,
+      universityLevel: finalLevel,
       seriesType: dto.seriesType,
       totalRiskScore: normalizedRisk,
       overallEvaluation,

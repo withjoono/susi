@@ -141,6 +141,15 @@ export class CalculateSeriesEvaluationRequestDto {
   seriesType: SeriesType;
 
   @ApiProperty({
+    description: '중계열',
+    example: '의약',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  middleSeries?: string;
+
+  @ApiProperty({
     description: '학생 과목 성적 목록',
     type: [StudentSubjectGradeDto],
   })

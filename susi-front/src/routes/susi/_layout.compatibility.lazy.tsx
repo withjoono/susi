@@ -109,6 +109,7 @@ function SusiCompatibility() {
     calculateMutation.mutate({
       universityName: selectedUniversity,
       seriesType,
+      middleSeries: selectedSeries.middleSeries,
       studentGrades,
     });
   };
