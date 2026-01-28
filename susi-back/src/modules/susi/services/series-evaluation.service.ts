@@ -473,13 +473,20 @@ export class SeriesEvaluationService {
           );
 
           // 이과 탐구과목 평가를 위한 helper 함수
-          const evaluateInquirySubject = (req: any): SubjectRequirementDto => {
+          const evaluateInquirySubject = (req: any, isRequired: boolean): SubjectRequirementDto => {
             const taken = studentSubjectMap.has(req.subjectName);
             const studentGrade = studentSubjectMap.get(req.subjectName) || null;
 
             let evaluation: string = null;
 
-            if (taken && studentGrade) {
+            if (!taken) {
+              // 미수강 시
+              if (isRequired) {
+                evaluation = '결격'; // 필수과목 미수강 → 결격
+              }
+              // 권장과목 미수강 → null (평가 안 함)
+            } else if (studentGrade) {
+              // 수강했지만 등급 평가
               // DB 과목명 → criteria key 매핑
               const subjectToCriteriaKey: Record<string, string> = {
                 '수학_확률과통계': 'statistics',
@@ -523,13 +530,13 @@ export class SeriesEvaluationService {
           // 필수과목 (necessityLevel = 1)
           const required = inquirySubjects.filter((req) => req.necessityLevel === 1);
           if (required.length > 0) {
-            requiredSubjects = required.map(evaluateInquirySubject);
+            requiredSubjects = required.map((req) => evaluateInquirySubject(req, true));
           }
 
           // 권장과목 (necessityLevel = 2)
           const recommended = inquirySubjects.filter((req) => req.necessityLevel === 2);
           if (recommended.length > 0) {
-            recommendedSubjects = recommended.map(evaluateInquirySubject);
+            recommendedSubjects = recommended.map((req) => evaluateInquirySubject(req, false));
           }
         } else {
           // 문과: 주요교과 사용 (major), necessityLevel 1 또는 2인 것
@@ -542,6 +549,7 @@ export class SeriesEvaluationService {
             requiredSubjects = majorSubjects.map((req) => {
               const grades = [];
               const subjectName = req.subjectName;
+              const isRequired = req.necessityLevel === 1;
 
               // 해당 교과의 모든 과목 등급 수집
               if (studentSubjectMap.has(subjectName)) {
@@ -555,7 +563,14 @@ export class SeriesEvaluationService {
 
               let evaluation: string = null;
 
-              if (avgGrade) {
+              if (!avgGrade) {
+                // 미수강 시
+                if (isRequired) {
+                  evaluation = '결격'; // 필수교과 미수강 → 결격
+                }
+                // 권장교과 미수강 → null (평가 안 함)
+              } else {
+                // 수강했지만 등급 평가
                 // DB 교과명 → criteria key 매핑
                 const subjectToCriteriaKey: Record<string, string> = {
                   '국어': 'korean',
