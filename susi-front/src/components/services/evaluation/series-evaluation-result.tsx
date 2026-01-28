@@ -89,8 +89,8 @@ export function SeriesEvaluationResult({
         </CardContent>
       </Card>
 
-      {/* 필수 과목 */}
-      {result.requiredSubjects && result.requiredSubjects.length > 0 && (
+      {/* 이과: 필수 과목 */}
+      {result.seriesType === "science" && result.requiredSubjects && result.requiredSubjects.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>필수 과목</CardTitle>
@@ -132,8 +132,8 @@ export function SeriesEvaluationResult({
         </Card>
       )}
 
-      {/* 필수 과목 없음 안내 */}
-      {!result.requiredSubjects && result.seriesType === "science" && (
+      {/* 이과: 필수 과목 없음 안내 */}
+      {result.seriesType === "science" && (!result.requiredSubjects || result.requiredSubjects.length === 0) && (
         <Card className="border-slate-200 bg-slate-50">
           <CardContent className="pt-6">
             <p className="text-center text-sm text-slate-600">필수 과목 없음</p>
@@ -141,8 +141,8 @@ export function SeriesEvaluationResult({
         </Card>
       )}
 
-      {/* 권장 과목 */}
-      {result.recommendedSubjects && result.recommendedSubjects.length > 0 && (
+      {/* 이과: 권장 과목 */}
+      {result.seriesType === "science" && result.recommendedSubjects && result.recommendedSubjects.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>권장 과목</CardTitle>
@@ -184,11 +184,67 @@ export function SeriesEvaluationResult({
         </Card>
       )}
 
-      {/* 권장 과목 없음 안내 */}
-      {!result.recommendedSubjects && result.seriesType === "science" && (
+      {/* 이과: 권장 과목 없음 안내 */}
+      {result.seriesType === "science" && (!result.recommendedSubjects || result.recommendedSubjects.length === 0) && (
         <Card className="border-slate-200 bg-slate-50">
           <CardContent className="pt-6">
             <p className="text-center text-sm text-slate-600">권장 과목 없음</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 문과: 주요교과 */}
+      {result.seriesType === "humanities" && result.requiredSubjects && result.requiredSubjects.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>주요교과</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b bg-slate-100">
+                  <tr>
+                    <th className="p-3 text-left">교과명</th>
+                    <th className="p-3 text-center">내 등급평균</th>
+                    <th className="p-3 text-center">평가</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {result.requiredSubjects.map((subject, idx) => {
+                    // 등급에 따른 평가 계산
+                    let evaluation = "-";
+                    if (subject.studentGrade) {
+                      if (subject.studentGrade <= 2.0) {
+                        evaluation = "우수";
+                      } else if (subject.studentGrade <= 3.0) {
+                        evaluation = "적합";
+                      } else if (subject.studentGrade <= 4.0) {
+                        evaluation = "주의";
+                      } else {
+                        evaluation = "위험";
+                      }
+                    }
+
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="p-3 font-medium">{subject.subjectName}</td>
+                        <td className="p-3 text-center font-semibold">
+                          {subject.studentGrade ? subject.studentGrade.toFixed(1) : "-"}
+                        </td>
+                        <td
+                          className={cn(
+                            "p-3 text-center font-semibold",
+                            getEvaluationColor(evaluation)
+                          )}
+                        >
+                          {evaluation}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       )}

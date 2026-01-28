@@ -45,7 +45,6 @@ import { SusiJonghap2027Controller } from './controllers/susi-jonghap-2027.contr
 import { UniversityLevelEntity } from 'src/database/entities/susi/university-level.entity';
 import { SeriesEvaluationCriteriaHumanitiesEntity } from 'src/database/entities/susi/series-evaluation-criteria-humanities.entity';
 import { SeriesEvaluationCriteriaScienceEntity } from 'src/database/entities/susi/series-evaluation-criteria-science.entity';
-import { MiddleSeriesSubjectRequirementsEntity } from 'src/database/entities/susi/middle-series-subject-requirements.entity';
 import { SeriesEvaluationController } from './controllers/series-evaluation.controller';
 import { SeriesEvaluationService } from './services/series-evaluation.service';
 
@@ -76,7 +75,6 @@ import { SeriesEvaluationService } from './services/series-evaluation.service';
       UniversityLevelEntity, // 대학별 레벨
       SeriesEvaluationCriteriaHumanitiesEntity, // 문과 계열 평가 기준
       SeriesEvaluationCriteriaScienceEntity, // 이과 계열 평가 기준
-      MiddleSeriesSubjectRequirementsEntity, // 중계열별 필수/권장 과목 요구사항
     ]),
   ],
   controllers: [

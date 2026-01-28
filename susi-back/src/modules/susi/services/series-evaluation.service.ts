@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { UniversityLevelEntity } from 'src/database/entities/susi/university-level.entity';
 import { SeriesEvaluationCriteriaHumanitiesEntity } from 'src/database/entities/susi/series-evaluation-criteria-humanities.entity';
 import { SeriesEvaluationCriteriaScienceEntity } from 'src/database/entities/susi/series-evaluation-criteria-science.entity';
-import { MiddleSeriesSubjectRequirementsEntity } from 'src/database/entities/susi/middle-series-subject-requirements.entity';
+import { SusiCategorySubjectNecessityEntity } from 'src/database/entities/susi/susi-category-subject-necessity.entity';
 import {
   CalculateSeriesEvaluationRequestDto,
   CalculateSeriesEvaluationResponseDto,
@@ -22,8 +22,8 @@ export class SeriesEvaluationService {
     private readonly humanitiesCriteriaRepository: Repository<SeriesEvaluationCriteriaHumanitiesEntity>,
     @InjectRepository(SeriesEvaluationCriteriaScienceEntity)
     private readonly scienceCriteriaRepository: Repository<SeriesEvaluationCriteriaScienceEntity>,
-    @InjectRepository(MiddleSeriesSubjectRequirementsEntity)
-    private readonly subjectRequirementsRepository: Repository<MiddleSeriesSubjectRequirementsEntity>,
+    @InjectRepository(SusiCategorySubjectNecessityEntity)
+    private readonly categorySubjectNecessityRepository: Repository<SusiCategorySubjectNecessityEntity>,
   ) {}
 
   /**
@@ -277,35 +277,113 @@ export class SeriesEvaluationService {
     let recommendedSubjects: SubjectRequirementDto[] = null;
 
     if (dto.middleSeries) {
-      const requirements = await this.subjectRequirementsRepository.findOne({
+      // SusiCategorySubjectNecessityEntity에서 중계열에 해당하는 과목 조회
+      const categoryRequirements = await this.categorySubjectNecessityRepository.find({
         where: {
-          middleSeries: dto.middleSeries,
-          seriesType: dto.seriesType,
+          midField: dto.middleSeries,
         },
       });
 
-      if (requirements) {
-        // 학생이 수강한 과목 목록 (Map으로 빠른 검색)
-        const studentSubjectMap = new Map(
-          dto.studentGrades.map((sg) => [sg.subjectName, sg.grade]),
-        );
+      if (categoryRequirements.length > 0) {
+        // 과목명 매핑 함수 (학생부 과목명 → DB 과목명)
+        const normalizeSubjectName = (studentSubject: string): string => {
+          const mapping: Record<string, string> = {
+            // 수학 과목
+            '확률과 통계': '수학_확률과통계',
+            '확률과통계': '수학_확률과통계',
+            '미적분': '수학_미적',
+            '기하': '수학_기하',
+            // 과학 과목 (로마숫자 → 아라비아숫자)
+            '물리학Ⅰ': '물리학1',
+            '물리학I': '물리학1',
+            '물리학Ⅱ': '물리학2',
+            '물리학II': '물리학2',
+            '화학Ⅰ': '화학1',
+            '화학I': '화학1',
+            '화학Ⅱ': '화학2',
+            '화학II': '화학2',
+            '생명과학Ⅰ': '생명과학1',
+            '생명과학I': '생명과학1',
+            '생명과학Ⅱ': '생명과학2',
+            '생명과학II': '생명과학2',
+            '지구과학Ⅰ': '지구과학1',
+            '지구과학I': '지구과학1',
+            '지구과학Ⅱ': '지구과학2',
+            '지구과학II': '지구과학2',
+            // 주요교과는 그대로
+            '국어': '국어',
+            '수학': '수학',
+            '영어': '영어',
+            '사회': '사회',
+            '통합사회': '사회',
+            '과학': '과학',
+            '통합과학': '과학',
+            '한국사': '한국사',
+          };
+          return mapping[studentSubject] || studentSubject;
+        };
 
-        // 필수 과목 체크
-        if (requirements.requiredSubjects && requirements.requiredSubjects.length > 0) {
-          requiredSubjects = requirements.requiredSubjects.map((subjectName) => ({
-            subjectName,
-            taken: studentSubjectMap.has(subjectName),
-            studentGrade: studentSubjectMap.get(subjectName) || null,
-          }));
-        }
+        // 학생이 수강한 과목 목록 (정규화된 과목명으로 매핑)
+        const studentSubjectMap = new Map<string, number>();
+        dto.studentGrades.forEach((sg) => {
+          const normalizedName = normalizeSubjectName(sg.subjectName);
+          studentSubjectMap.set(normalizedName, sg.grade);
+        });
 
-        // 권장 과목 체크
-        if (requirements.recommendedSubjects && requirements.recommendedSubjects.length > 0) {
-          recommendedSubjects = requirements.recommendedSubjects.map((subjectName) => ({
-            subjectName,
-            taken: studentSubjectMap.has(subjectName),
-            studentGrade: studentSubjectMap.get(subjectName) || null,
-          }));
+        if (dto.seriesType === SeriesType.SCIENCE) {
+          // 이과: 탐구과목만 사용 (inquiry)
+          const inquirySubjects = categoryRequirements.filter(
+            (req) => req.subjectType === 'inquiry',
+          );
+
+          // 필수과목 (necessityLevel = 1)
+          const required = inquirySubjects.filter((req) => req.necessityLevel === 1);
+          if (required.length > 0) {
+            requiredSubjects = required.map((req) => ({
+              subjectName: req.subjectName,
+              taken: studentSubjectMap.has(req.subjectName),
+              studentGrade: studentSubjectMap.get(req.subjectName) || null,
+            }));
+          }
+
+          // 권장과목 (necessityLevel = 2)
+          const recommended = inquirySubjects.filter((req) => req.necessityLevel === 2);
+          if (recommended.length > 0) {
+            recommendedSubjects = recommended.map((req) => ({
+              subjectName: req.subjectName,
+              taken: studentSubjectMap.has(req.subjectName),
+              studentGrade: studentSubjectMap.get(req.subjectName) || null,
+            }));
+          }
+        } else {
+          // 문과: 주요교과 사용 (major), necessityLevel 1 또는 2인 것
+          const majorSubjects = categoryRequirements.filter(
+            (req) => req.subjectType === 'major' && (req.necessityLevel === 1 || req.necessityLevel === 2),
+          );
+
+          if (majorSubjects.length > 0) {
+            // 문과는 필수/권장 구분 없이 주요교과로 통합 표시
+            requiredSubjects = majorSubjects.map((req) => {
+              const grades = [];
+              const subjectName = req.subjectName;
+
+              // 해당 교과의 모든 과목 등급 수집
+              if (studentSubjectMap.has(subjectName)) {
+                grades.push(studentSubjectMap.get(subjectName));
+              }
+
+              // 평균 계산
+              const avgGrade = grades.length > 0
+                ? grades.reduce((sum, g) => sum + g, 0) / grades.length
+                : null;
+
+              return {
+                subjectName,
+                taken: grades.length > 0,
+                studentGrade: avgGrade,
+              };
+            });
+          }
         }
       }
     }
