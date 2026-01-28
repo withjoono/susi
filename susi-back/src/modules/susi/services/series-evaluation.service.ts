@@ -299,21 +299,10 @@ export class SeriesEvaluationService {
               const criteriaKey = subjectToCriteriaKey[req.subjectName];
               if (criteriaKey && criteria[criteriaKey]) {
                 const recommendedGrade = Number(criteria[criteriaKey]);
-                const difference = studentGrade - recommendedGrade;
-
-                if (difference <= 0) {
-                  evaluation = '우수';
-                  riskScore = 0;
-                } else if (difference <= 0.5) {
-                  evaluation = '적합';
-                  riskScore = 10;
-                } else if (difference <= 1.5) {
-                  evaluation = '주의';
-                  riskScore = 30;
-                } else {
-                  evaluation = '위험';
-                  riskScore = 70;
-                }
+                // Spring 백엔드 로직 적용: 레벨 기반 위험도 계산
+                const result = this.calculateSubjectRiskScore(studentGrade, recommendedGrade, isRequired);
+                evaluation = result.evaluation;
+                riskScore = result.riskScore;
               }
             }
 
@@ -388,21 +377,10 @@ export class SeriesEvaluationService {
                 const criteriaKey = subjectToCriteriaKey[subjectName];
                 if (criteriaKey && criteria[criteriaKey]) {
                   const recommendedGrade = Number(criteria[criteriaKey]);
-                  const difference = avgGrade - recommendedGrade;
-
-                  if (difference <= 0) {
-                    evaluation = '우수';
-                    riskScore = 0;
-                  } else if (difference <= 0.5) {
-                    evaluation = '적합';
-                    riskScore = 10;
-                  } else if (difference <= 1.5) {
-                    evaluation = '주의';
-                    riskScore = 30;
-                  } else {
-                    evaluation = '위험';
-                    riskScore = 70;
-                  }
+                  // Spring 백엔드 로직 적용: 레벨 기반 위험도 계산
+                  const result = this.calculateSubjectRiskScore(avgGrade, recommendedGrade, isRequired);
+                  evaluation = result.evaluation;
+                  riskScore = result.riskScore;
                 }
               }
 
@@ -575,30 +553,12 @@ export class SeriesEvaluationService {
       const recommendedGrade = Number(criteria[criteriaKey]);
       const difference = avgGrade - recommendedGrade;
 
-      // 위험도 계산: 차이가 클수록 높은 점수
-      let riskScore = 0;
-      if (difference <= 0) {
-        riskScore = 0;
-      } else if (difference <= 1) {
-        riskScore = 10;
-      } else if (difference <= 2) {
-        riskScore = 30;
-      } else if (difference <= 3) {
-        riskScore = 50;
-      } else {
-        riskScore = 70;
-      }
+      // Spring 백엔드 로직 적용: 대학 레벨 기반 참조교과 위험도 계산
+      const result = this.calculateSubjectRiskScore(avgGrade, recommendedGrade, false);
+      const riskScore = result.riskScore;
+      const evaluation = result.evaluation;
 
-      // 평가 등급
-      let evaluation = '우수';
-      if (difference <= 0) {
-        evaluation = '우수';
-      } else if (difference <= 0.5) {
-        evaluation = '적합';
-      } else if (difference <= 1.5) {
-        evaluation = '주의';
-      } else {
-        evaluation = '위험';
+      if (evaluation === '위험') {
         improvementNeeded.push(category);
       }
 
@@ -655,5 +615,61 @@ export class SeriesEvaluationService {
       requiredSubjects,
       recommendedSubjects,
     };
+  }
+
+  /**
+   * 필수/권장 과목 위험도 계산 (Spring 백엔드 로직)
+   * @param studentGrade 학생의 과목 등급
+   * @param recommendedGrade 권장 등급
+   * @param isRequired 필수 여부 (true: 필수, false: 권장)
+   * @returns 평가 결과 및 위험도 점수
+   */
+  private calculateSubjectRiskScore(
+    studentGrade: number,
+    recommendedGrade: number,
+    isRequired: boolean,
+  ): { evaluation: string; riskScore: number } {
+    // Spring 로직: essentialFlag (1: 권장, 2: 필수)
+    const essentialFlag = isRequired ? 2 : 1;
+
+    // 등급 차이 계산 (권장등급 - 내등급)
+    // 양수: 내 등급이 권장보다 낮음 (나쁨)
+    // 음수: 내 등급이 권장보다 높음 (좋음)
+    const diff = recommendedGrade - studentGrade;
+
+    let riskScore = 0;
+    let evaluation = '';
+
+    // Spring 백엔드 calculateRiskScore 로직 적용
+    if (diff >= 3) {
+      riskScore = essentialFlag === 1 ? 40 : 80; // 권장: 40, 필수: 80
+      evaluation = '위험';
+    } else if (diff >= 2) {
+      riskScore = essentialFlag === 1 ? 40 : 70; // 권장: 40, 필수: 70
+      evaluation = '위험';
+    } else if (diff >= 1) {
+      riskScore = essentialFlag === 1 ? 30 : 60; // 권장: 30, 필수: 60
+      evaluation = '주의';
+    } else if (diff >= 0) {
+      riskScore = essentialFlag === 1 ? 30 : 50; // 권장: 30, 필수: 50
+      evaluation = '주의';
+    } else if (diff >= -1) {
+      riskScore = essentialFlag === 1 ? 20 : 40; // 권장: 20, 필수: 40
+      evaluation = '적합';
+    } else if (diff >= -2) {
+      riskScore = essentialFlag === 1 ? 20 : 30; // 권장: 20, 필수: 30
+      evaluation = '적합';
+    } else if (diff >= -3) {
+      riskScore = essentialFlag === 1 ? 10 : 20; // 권장: 10, 필수: 20
+      evaluation = '우수';
+    } else if (diff >= -4) {
+      riskScore = essentialFlag === 1 ? 10 : 10; // 권장: 10, 필수: 10
+      evaluation = '우수';
+    } else {
+      riskScore = 0; // 매우 우수
+      evaluation = '우수';
+    }
+
+    return { evaluation, riskScore };
   }
 }
