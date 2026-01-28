@@ -1,0 +1,9 @@
+{
+universityName: 서울대,
+seriesType: science,
+studentGrades: [
+{subjectName: 미적분, grade: 2.0},
+{subjectName: 물리I, grade: 1.5},
+{subjectName: 화학I, grade: 2.5}
+]
+}

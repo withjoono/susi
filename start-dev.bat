@@ -16,10 +16,10 @@ if %errorlevel% neq 0 (
 
 echo.
 echo [2/5] PostgreSQL 컨테이너 확인 중...
-docker ps --filter "name=geobuk-postgres" --filter "status=running" | findstr geobuk-postgres > nul
+docker ps --filter "name=hub-postgres" --filter "status=running" | findstr hub-postgres > nul
 if %errorlevel% neq 0 (
     echo    PostgreSQL 컨테이너 시작 중...
-    docker start geobuk-postgres > nul
+    docker start hub-postgres > nul
     if %errorlevel% neq 0 (
         echo    ❌ PostgreSQL 컨테이너 시작 실패
         pause
@@ -27,15 +27,15 @@ if %errorlevel% neq 0 (
     )
     echo    ✅ PostgreSQL 시작 완료
 ) else (
-    echo    ✅ PostgreSQL 이미 실행 중
+    echo    ✅ PostgreSQL 이미 실행 중 (Hub와 공유)
 )
 
 echo.
 echo [3/5] Redis 컨테이너 확인 중...
-docker ps --filter "name=geobuk-redis" --filter "status=running" | findstr geobuk-redis > nul
+docker ps --filter "name=hub-redis" --filter "status=running" | findstr hub-redis > nul
 if %errorlevel% neq 0 (
     echo    Redis 컨테이너 시작 중...
-    docker start geobuk-redis > nul
+    docker start hub-redis > nul
     if %errorlevel% neq 0 (
         echo    ❌ Redis 컨테이너 시작 실패
         pause
@@ -43,7 +43,7 @@ if %errorlevel% neq 0 (
     )
     echo    ✅ Redis 시작 완료
 ) else (
-    echo    ✅ Redis 이미 실행 중
+    echo    ✅ Redis 이미 실행 중 (Hub와 공유)
 )
 
 echo.

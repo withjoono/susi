@@ -2,13 +2,13 @@ import { initializeApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAo3YfEVPqRE5Pm7OUCByadZ3Yg56y4zHI",
-  authDomain: "geobukschool.firebaseapp.com",
-  projectId: "geobukschool",
-  storageBucket: "geobukschool.firebasestorage.app",
-  messagingSenderId: "69298836213",
-  appId: "1:69298836213:web:15f6ef87bf5b9f0aadebbc",
-  measurementId: "G-DNKPV8QPCK"
+  apiKey: "AIzaSyBY1IGk0iGvapiajl86FDicvy9P6dE1Nls",
+  authDomain: "susi-81355.firebaseapp.com",
+  projectId: "susi-81355",
+  storageBucket: "susi-81355.firebasestorage.app",
+  messagingSenderId: "1045442614164",
+  appId: "1:1045442614164:web:c8575eb445730a42b5b581",
+  measurementId: "G-VXJ3BX7N3L"
 };
 
 const app = initializeApp(firebaseConfig);

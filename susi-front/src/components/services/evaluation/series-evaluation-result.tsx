@@ -89,10 +89,114 @@ export function SeriesEvaluationResult({
         </CardContent>
       </Card>
 
-      {/* 과목별 평가 */}
+      {/* 필수 과목 */}
+      {result.requiredSubjects && result.requiredSubjects.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>필수 과목</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b bg-slate-100">
+                  <tr>
+                    <th className="p-3 text-left">과목명</th>
+                    <th className="p-3 text-center">수강 여부</th>
+                    <th className="p-3 text-center">내 등급</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {result.requiredSubjects.map((subject, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50">
+                      <td className="p-3 font-medium">{subject.subjectName}</td>
+                      <td className="p-3 text-center">
+                        {subject.taken ? (
+                          <span className="inline-block rounded bg-green-100 px-2 py-1 text-sm font-semibold text-green-800">
+                            수강함
+                          </span>
+                        ) : (
+                          <span className="inline-block rounded bg-red-100 px-2 py-1 text-sm font-semibold text-red-800">
+                            미수강
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-center font-semibold">
+                        {subject.studentGrade ? subject.studentGrade.toFixed(1) : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 필수 과목 없음 안내 */}
+      {!result.requiredSubjects && result.seriesType === "science" && (
+        <Card className="border-slate-200 bg-slate-50">
+          <CardContent className="pt-6">
+            <p className="text-center text-sm text-slate-600">필수 과목 없음</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 권장 과목 */}
+      {result.recommendedSubjects && result.recommendedSubjects.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>권장 과목</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b bg-slate-100">
+                  <tr>
+                    <th className="p-3 text-left">과목명</th>
+                    <th className="p-3 text-center">수강 여부</th>
+                    <th className="p-3 text-center">내 등급</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {result.recommendedSubjects.map((subject, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50">
+                      <td className="p-3 font-medium">{subject.subjectName}</td>
+                      <td className="p-3 text-center">
+                        {subject.taken ? (
+                          <span className="inline-block rounded bg-green-100 px-2 py-1 text-sm font-semibold text-green-800">
+                            수강함
+                          </span>
+                        ) : (
+                          <span className="inline-block rounded bg-yellow-100 px-2 py-1 text-sm font-semibold text-yellow-800">
+                            미수강
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-center font-semibold">
+                        {subject.studentGrade ? subject.studentGrade.toFixed(1) : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 권장 과목 없음 안내 */}
+      {!result.recommendedSubjects && result.seriesType === "science" && (
+        <Card className="border-slate-200 bg-slate-50">
+          <CardContent className="pt-6">
+            <p className="text-center text-sm text-slate-600">권장 과목 없음</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 참조교과 (과목별 상세 평가) */}
       <Card>
         <CardHeader>
-          <CardTitle>과목별 상세 평가</CardTitle>
+          <CardTitle>참조교과 (과목별 상세 평가)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">

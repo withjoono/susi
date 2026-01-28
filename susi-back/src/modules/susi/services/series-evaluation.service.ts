@@ -4,11 +4,13 @@ import { Repository } from 'typeorm';
 import { UniversityLevelEntity } from 'src/database/entities/susi/university-level.entity';
 import { SeriesEvaluationCriteriaHumanitiesEntity } from 'src/database/entities/susi/series-evaluation-criteria-humanities.entity';
 import { SeriesEvaluationCriteriaScienceEntity } from 'src/database/entities/susi/series-evaluation-criteria-science.entity';
+import { MiddleSeriesSubjectRequirementsEntity } from 'src/database/entities/susi/middle-series-subject-requirements.entity';
 import {
   CalculateSeriesEvaluationRequestDto,
   CalculateSeriesEvaluationResponseDto,
   SeriesType,
   SubjectEvaluationDto,
+  SubjectRequirementDto,
 } from '../dto/series-evaluation.dto';
 
 @Injectable()
@@ -20,6 +22,8 @@ export class SeriesEvaluationService {
     private readonly humanitiesCriteriaRepository: Repository<SeriesEvaluationCriteriaHumanitiesEntity>,
     @InjectRepository(SeriesEvaluationCriteriaScienceEntity)
     private readonly scienceCriteriaRepository: Repository<SeriesEvaluationCriteriaScienceEntity>,
+    @InjectRepository(MiddleSeriesSubjectRequirementsEntity)
+    private readonly subjectRequirementsRepository: Repository<MiddleSeriesSubjectRequirementsEntity>,
   ) {}
 
   /**
@@ -268,6 +272,44 @@ export class SeriesEvaluationService {
       overallEvaluation = '위험';
     }
 
+    // 6. 중계열별 필수/권장 과목 요구사항 조회
+    let requiredSubjects: SubjectRequirementDto[] = null;
+    let recommendedSubjects: SubjectRequirementDto[] = null;
+
+    if (dto.middleSeries) {
+      const requirements = await this.subjectRequirementsRepository.findOne({
+        where: {
+          middleSeries: dto.middleSeries,
+          seriesType: dto.seriesType,
+        },
+      });
+
+      if (requirements) {
+        // 학생이 수강한 과목 목록 (Map으로 빠른 검색)
+        const studentSubjectMap = new Map(
+          dto.studentGrades.map((sg) => [sg.subjectName, sg.grade]),
+        );
+
+        // 필수 과목 체크
+        if (requirements.requiredSubjects && requirements.requiredSubjects.length > 0) {
+          requiredSubjects = requirements.requiredSubjects.map((subjectName) => ({
+            subjectName,
+            taken: studentSubjectMap.has(subjectName),
+            studentGrade: studentSubjectMap.get(subjectName) || null,
+          }));
+        }
+
+        // 권장 과목 체크
+        if (requirements.recommendedSubjects && requirements.recommendedSubjects.length > 0) {
+          recommendedSubjects = requirements.recommendedSubjects.map((subjectName) => ({
+            subjectName,
+            taken: studentSubjectMap.has(subjectName),
+            studentGrade: studentSubjectMap.get(subjectName) || null,
+          }));
+        }
+      }
+    }
+
     return {
       universityName: dto.universityName,
       universityLevel: finalLevel,
@@ -276,6 +318,8 @@ export class SeriesEvaluationService {
       overallEvaluation,
       subjectEvaluations,
       improvementNeeded,
+      requiredSubjects,
+      recommendedSubjects,
     };
   }
 }

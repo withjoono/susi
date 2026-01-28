@@ -84,6 +84,15 @@ export interface SubjectEvaluation {
 }
 
 /**
+ * 필수/권장 과목 수강 여부
+ */
+export interface SubjectRequirement {
+  subjectName: string;
+  taken: boolean;
+  studentGrade?: number;
+}
+
+/**
  * 계열 적합성 계산 결과
  */
 export interface CalculateSeriesEvaluationResponse {
@@ -94,4 +103,6 @@ export interface CalculateSeriesEvaluationResponse {
   overallEvaluation: string;
   subjectEvaluations: SubjectEvaluation[];
   improvementNeeded: string[];
+  requiredSubjects?: SubjectRequirement[];
+  recommendedSubjects?: SubjectRequirement[];
 }

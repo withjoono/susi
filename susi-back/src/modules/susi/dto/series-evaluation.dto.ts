@@ -183,6 +183,20 @@ export class SubjectEvaluationDto {
 }
 
 /**
+ * 필수/권장 과목 수강 여부
+ */
+export class SubjectRequirementDto {
+  @ApiProperty({ description: '과목명' })
+  subjectName: string;
+
+  @ApiProperty({ description: '수강 여부' })
+  taken: boolean;
+
+  @ApiProperty({ description: '학생 등급 (수강한 경우)', nullable: true })
+  studentGrade?: number;
+}
+
+/**
  * 계열 적합성 계산 결과
  */
 export class CalculateSeriesEvaluationResponseDto {
@@ -201,9 +215,23 @@ export class CalculateSeriesEvaluationResponseDto {
   @ApiProperty({ description: '총 평가 (안전/주의/위험)' })
   overallEvaluation: string;
 
-  @ApiProperty({ description: '과목별 평가 결과', type: [SubjectEvaluationDto] })
+  @ApiProperty({ description: '과목별 평가 결과 (참조교과)', type: [SubjectEvaluationDto] })
   subjectEvaluations: SubjectEvaluationDto[];
 
   @ApiProperty({ description: '개선 필요 과목 목록' })
   improvementNeeded: string[];
+
+  @ApiProperty({
+    description: '필수 과목 요구사항',
+    type: [SubjectRequirementDto],
+    nullable: true,
+  })
+  requiredSubjects?: SubjectRequirementDto[];
+
+  @ApiProperty({
+    description: '권장 과목 요구사항',
+    type: [SubjectRequirementDto],
+    nullable: true,
+  })
+  recommendedSubjects?: SubjectRequirementDto[];
 }

@@ -1,6 +1,6 @@
 import axios from "axios";
 import { camelizeKeys } from "humps";
-import { clearTokens } from "@/lib/api/token-manager";
+import { getAccessToken, setAccessToken, clearTokens } from "@/lib/api/token-manager";
 import { env } from "@/lib/config/env";
 
 /**
@@ -49,21 +49,8 @@ const createNestApiInterceptors = (apiClientInstance) => {
   // 요청 인터셉터: Authorization 헤더 추가
   apiClientInstance.interceptors.request.use(
     (config) => {
-      // 1. 먼저 직접 저장된 토큰 확인 (SSO 및 token-manager에서 사용)
-      let accessToken = localStorage.getItem('accessToken');
-
-      // 2. 없으면 Zustand persist storage에서 확인 (fallback)
-      if (!accessToken) {
-        const authStorage = localStorage.getItem('auth-storage');
-        if (authStorage) {
-          try {
-            const parsed = JSON.parse(authStorage);
-            accessToken = parsed?.state?.accessToken;
-          } catch (e) {
-            console.error('Failed to parse auth-storage:', e);
-          }
-        }
-      }
+      // token-manager에서 토큰 가져오기
+      const accessToken = getAccessToken();
 
       // 토큰이 있으면 Authorization 헤더 추가
       if (accessToken) {

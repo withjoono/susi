@@ -5,7 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdmissionEntity } from 'src/database/entities/core/admission.entity';
 import { RecruitmentUnitEntity } from 'src/database/entities/core/recruitment-unit.entity';
 import { SusiKyokwaRecruitmentEntity } from 'src/database/entities/susi/susi-kyokwa-recruitment.entity';
-import { SusiKyokwaCutEntity } from 'src/database/entities/susi/susi-kyokwa-cut.entity';
+import { SusiKyokwaIpkyulEntity } from 'src/database/entities/susi/susi-kyokwa-ipkyul.entity';
 import { ExploreSusiJonghapService } from './services/explore-susi-jonghap.service';
 import { ExploreSearchController } from './controllers/explore-search.controller';
 import { ExploreSearchService } from './services/explore-search.service';
@@ -19,7 +19,7 @@ import { ExploreRegularController } from './controllers/explore-regular-admissio
       AdmissionEntity,
       RecruitmentUnitEntity,
       SusiKyokwaRecruitmentEntity,
-      SusiKyokwaCutEntity,
+      SusiKyokwaIpkyulEntity,
       UniversityEntity,
       RegularAdmissionEntity,
     ]),

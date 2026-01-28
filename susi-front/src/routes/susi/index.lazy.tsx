@@ -200,61 +200,25 @@ function SusiPromo() {
       {/* Hero Section */}
       <div className="w-full bg-white py-12">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col lg:flex-row items-center gap-8">
-            {/* 왼쪽: 텍스트 */}
-            <div className="flex-1 text-center lg:text-left">
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                2027 <span className="text-olive-500">수시 합격 예측</span> 서비스
-              </h1>
-              <p className="text-lg text-gray-600 mb-6">
-                거북스쿨만의 단계별 필터링 검색으로<br />
-                나에게 가장 유리한 전형을 찾아보세요
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
-                <Link to="/auth/login">
-                  <Button className="bg-olive-500 hover:bg-olive-600 text-white px-8 py-3 text-lg">
-                    로그인하고 시작하기
-                  </Button>
-                </Link>
-                <Link to="/auth/register">
-                  <Button variant="outline" className="border-olive-500 text-olive-500 hover:bg-olive-50 px-8 py-3 text-lg">
-                    회원가입
-                  </Button>
-                </Link>
-              </div>
-            </div>
-
-            {/* 오른쪽: 로그인 카드 */}
-            <div className="flex-shrink-0 w-full max-w-sm">
-              <Card className="border-gray-100 shadow-lg">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-center text-sm text-gray-500">
-                    2027 수시 서비스
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex flex-col items-center gap-3 py-4">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
-                      <IconUser className="h-7 w-7 text-gray-400" />
-                    </div>
-                    <p className="text-center text-sm text-gray-500">
-                      로그인하시면 수시 서비스를
-                      <br />
-                      이용하실 수 있습니다.
-                    </p>
-                    <Link to="/auth/login" className="w-full">
-                      <Button className="w-full text-white bg-olive-500 hover:bg-olive-600">
-                        로그인
-                      </Button>
-                    </Link>
-                    <Link to="/auth/register" className="w-full">
-                      <Button variant="outline" className="w-full">
-                        회원가입
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+          <div className="flex flex-col items-center text-center">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              2027 <span className="text-olive-500">수시 합격 예측</span> 서비스
+            </h1>
+            <p className="text-lg text-gray-600 mb-6">
+              거북스쿨만의 단계별 필터링 검색으로<br />
+              나에게 가장 유리한 전형을 찾아보세요
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link to="/auth/login">
+                <Button className="bg-olive-500 hover:bg-olive-600 text-white px-8 py-3 text-lg">
+                  로그인하고 시작하기
+                </Button>
+              </Link>
+              <Link to="/auth/register">
+                <Button variant="outline" className="border-olive-500 text-olive-500 hover:bg-olive-50 px-8 py-3 text-lg">
+                  회원가입
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

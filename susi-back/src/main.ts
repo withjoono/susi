@@ -169,31 +169,12 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      // 허용할 도메인
-      'https://ts-admin-479323.web.app',
-      'https://turtleschool-admin-front.vercel.app',
-      'https://admin2.turtleskool.com',
-      'https://turtleskool.com',
-      'https://turtleanp.com',
-      'https://turtlemedi.com',
-      'https://ts-front.vercel.app',
+      // 프로덕션 도메인
+      'https://ts-front-479305.web.app', // Susi 프론트엔드 배포
       'https://www.geobukschool.kr',
       'https://geobukschool.kr',
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://localhost:5175',
-      'http://localhost:5176',
-      'http://localhost:4173',
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:3002',
-      'http://localhost:4000',
-      'https://idaacademy.vercel.app',
-      'https://hizen-front-gb.web.app',
-      // StudyPlanner 도메인
-      'https://studyplanner.kr',
-      'https://www.studyplanner.kr',
-      'https://studyplanner-new.web.app',
+      // 로컬 개발 환경
+      'http://localhost:3001', // Susi 프론트엔드
     ],
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true, // 자격 증명 허용

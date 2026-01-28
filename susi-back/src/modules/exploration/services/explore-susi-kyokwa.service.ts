@@ -3,11 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { SusiKyokwaRecruitmentEntity } from 'src/database/entities/susi/susi-kyokwa-recruitment.entity';
-import { SusiKyokwaCutEntity } from 'src/database/entities/susi/susi-kyokwa-cut.entity';
+import { SusiKyokwaIpkyulEntity } from 'src/database/entities/susi/susi-kyokwa-ipkyul.entity';
 
 /**
  * 수시 교과전형 탐색 서비스
- * - susi_kyokwa_recruitment 및 susi_kyokwa_cut 테이블을 직접 조회
+ * - susi_kyokwa_recruitment 및 susi_kyokwa_ipkyul 테이블을 직접 조회
  * - 복잡한 관계 탐색 로직 제거, ida_id로 조인
  * - 프론트엔드 탐색 페이지의 요구사항에 맞춰 데이터 반환
  */
@@ -18,8 +18,8 @@ export class ExploreSusiKyokwaService {
   constructor(
     @InjectRepository(SusiKyokwaRecruitmentEntity)
     private readonly susiKyokwaRecruitmentRepository: Repository<SusiKyokwaRecruitmentEntity>,
-    @InjectRepository(SusiKyokwaCutEntity)
-    private readonly susiKyokwaCutRepository: Repository<SusiKyokwaCutEntity>,
+    @InjectRepository(SusiKyokwaIpkyulEntity)
+    private readonly susiKyokwaIpkyulRepository: Repository<SusiKyokwaIpkyulEntity>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -71,17 +71,17 @@ export class ExploreSusiKyokwaService {
     const idaIds = recruitmentData.map((r) => r.idaId).filter(Boolean);
 
     // susi_kyokwa_cut 테이블에서 등급컷 정보 조회
-    const cutData = await this.susiKyokwaCutRepository.find({
+    const ipkyulData = await this.susiKyokwaIpkyulRepository.find({
       where: {
         idaId: In(idaIds),
       },
     });
 
     // ida_id를 키로 하는 Map 생성
-    const cutMap = new Map(cutData.map((cut) => [cut.idaId, cut]));
+    const ipkyulMap = new Map(ipkyulData.map((cut) => [cut.idaId, cut]));
 
     // 데이터 그룹화 (대학명-전형명-계열로 그룹화)
-    const groupedData = this.groupDataForStep1(recruitmentData, cutMap);
+    const groupedData = this.groupDataForStep1(recruitmentData, ipkyulMap);
     const result = { items: groupedData };
 
     await this.cacheManager.set(cacheKey, result, 120 * 60 * 1000); // 120분 캐시
@@ -234,17 +234,17 @@ export class ExploreSusiKyokwaService {
     const idaIds = recruitmentData.map((r) => r.idaId).filter(Boolean);
 
     // susi_kyokwa_cut 테이블에서 등급컷 정보 조회
-    const cutData = await this.susiKyokwaCutRepository.find({
+    const ipkyulData = await this.susiKyokwaIpkyulRepository.find({
       where: {
         idaId: In(idaIds),
       },
     });
 
     // ida_id를 키로 하는 Map 생성
-    const cutMap = new Map(cutData.map((cut) => [cut.idaId, cut]));
+    const ipkyulMap = new Map(ipkyulData.map((cut) => [cut.idaId, cut]));
 
     const items = recruitmentData.map((item) => {
-      const cut = cutMap.get(item.idaId);
+      const cut = ipkyulMap.get(item.idaId);
 
       return {
         id: item.id,
@@ -268,9 +268,9 @@ export class ExploreSusiKyokwaService {
           name: item.majorField || '',
         },
         scores: {
-          grade_50_cut: cut?.gradeInitialCut || null,
-          grade_70_cut: cut?.gradeAdditionalCut || null,
-          convert_50_cut: cut?.convertedScoreInitialCut || null,
+          grade_50_cut: cut?.studentRecordGrade50_2025 || null,
+          grade_70_cut: cut?.studentRecordGrade70_2025 || null,
+          convert_50_cut: null, // No equivalent field in ipkyul table
           convert_70_cut: null,
           risk_plus_5: null,
           risk_plus_4: null,
@@ -362,7 +362,7 @@ export class ExploreSusiKyokwaService {
     }
 
     // 등급컷 정보 조회
-    const cut = await this.susiKyokwaCutRepository.findOne({
+    const cut = await this.susiKyokwaIpkyulRepository.findOne({
       where: { idaId: item.idaId },
     });
 
@@ -428,9 +428,9 @@ export class ExploreSusiKyokwaService {
           }
         : null,
       scores: {
-        grade_50_cut: cut?.gradeInitialCut || null,
-        grade_70_cut: cut?.gradeAdditionalCut || null,
-        convert_50_cut: cut?.convertedScoreInitialCut || null,
+        grade_50_cut: cut?.studentRecordGrade50_2025 || null,
+        grade_70_cut: cut?.studentRecordGrade70_2025 || null,
+        convert_50_cut: null, // No equivalent field in ipkyul table
         convert_70_cut: null,
         risk_plus_5: null,
         risk_plus_4: null,
@@ -453,7 +453,7 @@ export class ExploreSusiKyokwaService {
    */
   private groupDataForStep1(
     recruitmentData: SusiKyokwaRecruitmentEntity[],
-    cutMap: Map<string, SusiKyokwaCutEntity>,
+    ipkyulMap: Map<string, SusiKyokwaIpkyulEntity>,
   ) {
     const groupedMap = new Map<
       string,
@@ -482,10 +482,17 @@ export class ExploreSusiKyokwaService {
       if (!item.majorField) return;
 
       const key = `${item.universityName}-${item.admissionName}-${item.majorField}`;
-      const cut = cutMap.get(item.idaId);
-      const gradeCut = cut?.gradeInitialCut;
-      const gradeCutNum = gradeCut ? parseFloat(String(gradeCut)) : NaN;
-      const validGradeCut = !isNaN(gradeCutNum) && gradeCutNum >= 1 && gradeCutNum <= 9 ? gradeCutNum : null;
+      const ipkyul = ipkyulMap.get(item.idaId);
+
+      // 50p = 최고등급 (낮은 숫자), 70p = 최저등급 (높은 숫자)
+      const grade50p = ipkyul?.studentRecordGrade50_2025;
+      const grade70p = ipkyul?.studentRecordGrade70_2025;
+
+      const grade50pNum = grade50p ? parseFloat(String(grade50p)) : NaN;
+      const grade70pNum = grade70p ? parseFloat(String(grade70p)) : NaN;
+
+      const validGrade50p = !isNaN(grade50pNum) && grade50pNum >= 1 && grade50pNum <= 9 ? grade50pNum : null;
+      const validGrade70p = !isNaN(grade70pNum) && grade70pNum >= 1 && grade70pNum <= 9 ? grade70pNum : null;
 
       if (!groupedMap.has(key)) {
         groupedMap.set(key, {
@@ -506,18 +513,22 @@ export class ExploreSusiKyokwaService {
             id: this.getDepartmentId(item.majorField),
             name: item.majorField,
           },
-          min_cut: validGradeCut,
-          max_cut: validGradeCut ? validGradeCut + 0.05 : null,
+          min_cut: validGrade50p,
+          max_cut: validGrade70p,
           recruitment_unit_ids: [item.id],
         });
       } else {
         const group = groupedMap.get(key)!;
-        if (validGradeCut !== null) {
-          if (group.min_cut === null || validGradeCut < group.min_cut) {
-            group.min_cut = validGradeCut;
+        // Update min_cut with the best grade (lowest number from 50p)
+        if (validGrade50p !== null) {
+          if (group.min_cut === null || validGrade50p < group.min_cut) {
+            group.min_cut = validGrade50p;
           }
-          if (group.max_cut === null || validGradeCut > group.max_cut) {
-            group.max_cut = validGradeCut;
+        }
+        // Update max_cut with the worst grade (highest number from 70p)
+        if (validGrade70p !== null) {
+          if (group.max_cut === null || validGrade70p > group.max_cut) {
+            group.max_cut = validGrade70p;
           }
         }
         group.recruitment_unit_ids.push(item.id);
@@ -525,10 +536,8 @@ export class ExploreSusiKyokwaService {
     });
 
     return Array.from(groupedMap.values()).map((group) => {
+      // Return group as-is with real grade data from ipkyul table
       if (group.min_cut !== null && group.max_cut !== null) {
-        if (group.min_cut === group.max_cut) {
-          group.max_cut = Math.min(group.max_cut + 0.05, 9);
-        }
         return {
           ...group,
           min_cut: parseFloat(group.min_cut.toFixed(2)),
@@ -543,43 +552,52 @@ export class ExploreSusiKyokwaService {
    * 계열(department) 문자열을 ID로 변환
    */
   private getDepartmentId(department: string | null): number {
+    if (!department) return 0;
+
     const departmentMap: Record<string, number> = {
       인문: 1,
+      인문계열: 1,
       사회: 2,
+      사회계열: 2,
       자연: 3,
+      자연계열: 3,
       공학: 4,
+      공학계열: 4,
       의약: 5,
+      의약계열: 5,
       예체능: 6,
+      예체능계열: 6,
       교육: 7,
+      교육계열: 7,
     };
-    return departmentMap[department || ''] || 0;
+    return departmentMap[department] || 0;
   }
 
   /**
    * 과거 입결 데이터 구성
    */
-  private buildPreviousResults(cut: SusiKyokwaCutEntity | undefined) {
+  private buildPreviousResults(cut: SusiKyokwaIpkyulEntity | undefined) {
     if (!cut) return [];
 
     const results = [];
 
-    if (cut.grade50p2024 || cut.competitionRate2024) {
+    if (cut.studentRecordGrade50_2024 || cut.competitionRate2024) {
       results.push({
         year: 2024,
         result_criteria: '50%',
-        grade_cut: cut.grade50p2024 || null,
-        converted_score_cut: cut.convertedScore50p2024 || null,
+        grade_cut: cut.studentRecordGrade50_2024 || null,
+        converted_score_cut: null, // No equivalent field in ipkyul table
         competition_ratio: cut.competitionRate2024 || null,
         recruitment_number: cut.recruitment2024 || null,
       });
     }
 
-    if (cut.grade50p2023 || cut.competitionRate2023) {
+    if (cut.studentRecordGrade50_2023 || cut.competitionRate2023) {
       results.push({
         year: 2023,
         result_criteria: '50%',
-        grade_cut: cut.grade50p2023 || null,
-        converted_score_cut: cut.convertedScore50p2023 || null,
+        grade_cut: cut.studentRecordGrade50_2023 || null,
+        converted_score_cut: null, // No equivalent field in ipkyul table
         competition_ratio: cut.competitionRate2023 || null,
         recruitment_number: cut.recruitment2023 || null,
       });

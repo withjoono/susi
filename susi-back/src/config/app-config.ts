@@ -33,11 +33,11 @@ export default registerAs<AppConfig>('app', () => {
     nodeEnv: process.env.NODE_ENV || 'development',
     name: process.env.APP_NAME || 'app',
     workingDirectory: process.env.PWD || process.cwd(),
-    // 1순위: Google Cloud의 PORT, 2순위: .env의 SERVER_PORT, 3순위: 기본값 4000
+    // 1순위: Google Cloud의 PORT, 2순위: .env의 SERVER_PORT, 3순위: 기본값 4001 (Susi 백엔드)
     port: process.env.PORT
       ? parseInt(process.env.PORT, 10)
       : process.env.SERVER_PORT
         ? parseInt(process.env.SERVER_PORT, 10)
-        : 4000,
+        : 4001,
   };
 });

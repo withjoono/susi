@@ -38,7 +38,7 @@ const initialData: FormData = {
   step5SelectedIds: [],
   basicType: "일반",
   region: [],
-  selectedGeneralFieldIds: [1],
+  selectedGeneralFieldIds: [], // 전체 계열 표시 (빈 배열 = 필터링 없음)
   selectedSubtypeIds: [],
 };
 
