@@ -65,9 +65,6 @@ export const Step1Chart = ({
 }: Step1Props) => {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
-  // Debug: Check myGrade value
-  console.log('[Step1Chart] myGrade:', myGrade, 'reversed:', reverseGrade(myGrade));
-
   const mapped = data.items.map((item, index) => {
     // minCut과 maxCut을 사용하여 최초컷 범위 표시
     const minCutReversed = reverseGrade(item.minCut);

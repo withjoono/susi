@@ -79,14 +79,8 @@ export const SelectedChartDataTable = ({
     if (units.length === 0) return { min: null, max: null };
 
     const cuts = units
-      .map((u) => {
-        // humps converts snake_case to camelCase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const scores = u.scores as any;
-        const cut = scores?.grade70Cut ?? scores?.grade_70_cut;
-        return typeof cut === 'number' ? cut : parseFloat(cut);
-      })
-      .filter((cut): cut is number => !isNaN(cut));
+      .map((u) => u.scores?.grade70Cut)
+      .filter((cut): cut is number => cut !== null && cut !== undefined);
 
     if (cuts.length === 0) return { min: null, max: null };
 
@@ -334,13 +328,9 @@ export const SelectedChartDataTable = ({
                               </thead>
                               <tbody className="text-xs">
                                 {recruitmentUnits.map((unit) => {
-                                  // humps converts snake_case to camelCase, so grade_70_cut becomes grade70Cut
-                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                  const scores = unit.scores as any;
-                                  const gradeCut = scores?.grade70Cut ?? scores?.grade_70_cut;
-                                  const gradeCutNum = typeof gradeCut === 'number' ? gradeCut : parseFloat(gradeCut);
-                                  const gradeDiff = !isNaN(gradeCutNum) && myGrade
-                                    ? (gradeCutNum - myGrade).toFixed(2)
+                                  const gradeCut = unit.scores?.grade70Cut;
+                                  const gradeDiff = gradeCut !== null && gradeCut !== undefined && myGrade
+                                    ? (gradeCut - myGrade).toFixed(2)
                                     : null;
                                   const isSelected = selectedRecruitmentUnits.includes(unit.id);
 
@@ -357,8 +347,7 @@ export const SelectedChartDataTable = ({
                                         {unit.university?.name}
                                       </td>
                                       <td className="py-2 px-3 whitespace-nowrap">
-                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                        {(unit as any).generalField?.name || (unit as any).general_field?.name || "-"}
+                                        {unit.generalField?.name || "-"}
                                       </td>
                                       <td className="py-2 px-3 whitespace-nowrap">
                                         {unit.admission?.name}
@@ -367,7 +356,7 @@ export const SelectedChartDataTable = ({
                                         {unit.name}
                                       </td>
                                       <td className="py-2 px-3 whitespace-nowrap">
-                                        {!isNaN(gradeCutNum) ? `${gradeCutNum.toFixed(2)}등급` : "-"}
+                                        {gradeCut !== null && gradeCut !== undefined ? `${gradeCut.toFixed(2)}등급` : "-"}
                                       </td>
                                       <td className="py-2 px-3 whitespace-nowrap">
                                         {gradeDiff !== null ? (

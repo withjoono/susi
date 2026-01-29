@@ -122,13 +122,13 @@ const groupDataByUniversityAdmissionField = (
 ): Record<string, SusiKyokwaStep4GroupData> => {
   return data.reduce<Record<string, SusiKyokwaStep4GroupData>>(
     (grouped, item) => {
-      const key = `${item.university.name}-${item.university.region}-${item.admission.name}-${item.general_field.name}`;
+      const key = `${item.university.name}-${item.university.region}-${item.admission.name}-${item.generalField.name}`;
       if (!grouped[key]) {
         grouped[key] = {
           university_name: item.university.name,
           university_region: item.university.region,
           admission_name: item.admission.name,
-          general_field_name: item.general_field.name,
+          general_field_name: item.generalField.name,
           data: [item],
         };
       } else {

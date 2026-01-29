@@ -25,8 +25,8 @@ interface FormData {
   step4SelectedIds: number[];
   step5SelectedIds: number[];
   basicType: "일반" | "특별";
+  category: string;
   region: IRegion[];
-  selectedGeneralFieldIds: number[];
   selectedSubtypeIds: number[];
 }
 
@@ -37,8 +37,8 @@ const initialData: FormData = {
   step4SelectedIds: [],
   step5SelectedIds: [],
   basicType: "일반",
+  category: "전체",
   region: [],
-  selectedGeneralFieldIds: [], // 전체 계열 표시 (빈 배열 = 필터링 없음)
   selectedSubtypeIds: [],
 };
 

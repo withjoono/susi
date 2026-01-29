@@ -5,23 +5,24 @@ export interface IExploreSusiKyokwaStep1Item {
     name: string;
     region: string;
     code: string;
-    establishment_type: string;
+    establishmentType: string;  // camelCase
   };
   name: string;
   year: number;
-  basic_type: "일반" | "특별";
+  basicType: "일반" | "특별";  // camelCase
   category: {
     id: number;
     name: string;
   };
-  subtype_ids: number[];
-  general_type: {
+  subtypeIds: number[];  // camelCase
+  generalType: {  // camelCase
     id: number;
     name: string;
   };
-  min_cut: number | null;
-  max_cut: number | null;
-  recruitment_unit_ids: number[];
+  subjectCategory?: string | null;  // camelCase
+  minCut: number | null;  // camelCase: API response is transformed by humps
+  maxCut: number | null;  // camelCase: API response is transformed by humps
+  recruitmentUnitIds: number[];  // camelCase
 }
 
 export interface IExploreSusiKyokwaStep1Response {
@@ -103,39 +104,39 @@ export interface IExploreSusiKyokwaStep3Response {
 export interface IExploreSusiKyokwaStep4Item {
   id: number;
   name: string;
-  recruitment_number: number | null;
+  recruitmentNumber: number | null;
   university: {
     id: number;
     name: string;
     region: string;
     code: string;
-    establishment_type: string;
+    establishmentType: string;
   };
   admission: {
     id: number;
     name: string;
     year: number;
-    basic_type: "일반" | "특별";
+    basicType: "일반" | "특별";
   };
-  general_field: {
+  generalField: {
     id: number;
     name: string;
   };
   scores: {
-    grade_50_cut: number | null;
-    grade_70_cut: number | null;
-    convert_50_cut: number | null;
-    convert_70_cut: number | null;
-    risk_plus_5: number | null;
-    risk_plus_4: number | null;
-    risk_plus_3: number | null;
-    risk_plus_2: number | null;
-    risk_plus_1: number | null;
-    risk_minus_1: number | null;
-    risk_minus_2: number | null;
-    risk_minus_3: number | null;
-    risk_minus_4: number | null;
-    risk_minus_5: number | null;
+    grade50Cut: number | null;
+    grade70Cut: number | null;
+    convert50Cut: number | null;
+    convert70Cut: number | null;
+    riskPlus5: number | null;
+    riskPlus4: number | null;
+    riskPlus3: number | null;
+    riskPlus2: number | null;
+    riskPlus1: number | null;
+    riskMinus1: number | null;
+    riskMinus2: number | null;
+    riskMinus3: number | null;
+    riskMinus4: number | null;
+    riskMinus5: number | null;
   } | null;
 }
 

@@ -117,27 +117,25 @@ export const GroupedDataTable = ({
                     </td>
                     <td className="py-2">{item.name}</td>
                     <td className="py-2">
-                      {parseFloat(item.scores?.grade_50_cut + "").toFixed(2) ||
-                        "-"}
+                      {item.scores?.grade50Cut?.toFixed(2) || "-"}
                     </td>
                     <td className="py-2">
-                      {parseFloat(item.scores?.grade_70_cut + "").toFixed(2) ||
-                        "-"}
+                      {item.scores?.grade70Cut?.toFixed(2) || "-"}
                     </td>
                     <th className="py-2 text-start">
                       {myGrade ? (
                         <RiskBadge
                           risk={calculateSubjectRisk(myGrade, {
-                            risk_1: item.scores?.risk_plus_5 || null,
-                            risk_2: item.scores?.risk_plus_4 || null,
-                            risk_3: item.scores?.risk_plus_3 || null,
-                            risk_4: item.scores?.risk_plus_2 || null,
-                            risk_5: item.scores?.risk_plus_1 || null,
-                            risk_6: item.scores?.risk_minus_1 || null,
-                            risk_7: item.scores?.risk_minus_2 || null,
-                            risk_8: item.scores?.risk_minus_3 || null,
-                            risk_9: item.scores?.risk_minus_4 || null,
-                            risk_10: item.scores?.risk_minus_5 || null,
+                            risk_1: item.scores?.riskPlus5 || null,
+                            risk_2: item.scores?.riskPlus4 || null,
+                            risk_3: item.scores?.riskPlus3 || null,
+                            risk_4: item.scores?.riskPlus2 || null,
+                            risk_5: item.scores?.riskPlus1 || null,
+                            risk_6: item.scores?.riskMinus1 || null,
+                            risk_7: item.scores?.riskMinus2 || null,
+                            risk_8: item.scores?.riskMinus3 || null,
+                            risk_9: item.scores?.riskMinus4 || null,
+                            risk_10: item.scores?.riskMinus5 || null,
                           })}
                         />
                       ) : (

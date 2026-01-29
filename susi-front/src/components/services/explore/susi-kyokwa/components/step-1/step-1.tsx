@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Step1Chart } from "./step-1-chart";
 import { BasicTypeSelector } from "./basic-type-selector";
+import { CategorySelector } from "./category-selector";
 import { RegionSelector } from "./region-selector";
-import { GeneralFieldSelector } from "./general-field-selector";
 import { AdmissionSubtypeSelector } from "./admission-subtype-selector";
 import { SelectedChartDataTable } from "./selected-chart-data-table";
 import { toast } from "sonner";
@@ -31,16 +31,9 @@ export const SusiKyokwaStep1 = () => {
   const susiKyokwaStep1 = useGetExploreSusiKyokwaStep1({
     year: 2025,
     basicType: formData.basicType,
+    category: formData.category,
   });
   const data = susiKyokwaStep1.data || { items: [] };
-
-  // Debug: Check if React Query received data
-  console.log('[Step1] React Query data:', {
-    isLoading: susiKyokwaStep1.isLoading,
-    isError: susiKyokwaStep1.isError,
-    dataItemCount: data.items.length,
-    firstItem: data.items[0]
-  });
 
   const [isSorted, setIsSorted] = useState(false);
   const [selectedUniversitiesChart, setSelectedUniversitiesChart] = useState<
@@ -53,19 +46,7 @@ export const SusiKyokwaStep1 = () => {
 
   const filteredData = useMemo(
     () => {
-      const result = filterData(data, formData, isSorted);
-      console.log('[Step1] Filtered data:', {
-        originalCount: data.items.length,
-        filteredCount: result.items.length,
-        filters: {
-          region: formData.region,
-          generalFieldIds: formData.selectedGeneralFieldIds,
-          subtypeIds: formData.selectedSubtypeIds,
-          basicType: formData.basicType
-        },
-        firstFilteredItem: result.items[0]
-      });
-      return result;
+      return filterData(data, formData, isSorted);
     },
     [formData, data, isSorted],
   );
@@ -82,10 +63,10 @@ export const SusiKyokwaStep1 = () => {
         (key) =>
           data.items.find(
             (item) =>
-              item.general_type &&
-              `${item.university.region}-${item.university.name}-${item.name}-${item.general_type.name}` ===
+              item.generalType &&
+              `${item.university.region}-${item.university.name}-${item.name}-${item.generalType.name}` ===
                 key,
-          )?.recruitment_unit_ids || [],
+          )?.recruitmentUnitIds || [],
       ),
     );
     nextStep();
@@ -99,8 +80,8 @@ export const SusiKyokwaStep1 = () => {
   return (
     <div className="space-y-3 px-2 pt-4 md:space-y-6">
       <BasicTypeSelector resetSelect={resetSelect} />
+      <CategorySelector resetSelect={resetSelect} />
       <RegionSelector />
-      <GeneralFieldSelector />
       {formData.basicType === "특별" ? <AdmissionSubtypeSelector /> : null}
 
       <div className="py-4">
@@ -176,8 +157,8 @@ const ChartViewer = ({
           : [...prevSelected, item],
       );
     } else {
-      if (!item.general_type) return;
-      const key = `${item.university.region}-${item.university.name}-${item.name}-${item.general_type.name}`;
+      if (!item.generalType) return;
+      const key = `${item.university.region}-${item.university.name}-${item.name}-${item.generalType.name}`;
       setSelectedUniversities((prevSelected) =>
         prevSelected.includes(key)
           ? prevSelected.filter((n) => n !== key)
@@ -190,19 +171,11 @@ const ChartViewer = ({
     if (typeof item === "string") {
       return selectedUniversities.includes(item);
     } else {
-      if (!item.general_type) return false;
-      const key = `${item.university.region}-${item.university.name}-${item.name}-${item.general_type.name}`;
+      if (!item.generalType) return false;
+      const key = `${item.university.region}-${item.university.name}-${item.name}-${item.generalType.name}`;
       return selectedUniversities.includes(key);
     }
   };
-
-  // Debug: Check data being passed to chart
-  console.log('[ChartViewer] Data being passed to Step1Chart:', {
-    hasData: !!data,
-    itemCount: data?.items?.length || 0,
-    myGrade,
-    firstItem: data?.items?.[0]
-  });
 
   if (!data) return <div></div>;
 
@@ -226,7 +199,9 @@ const filterData = (
   if (!data) return { items: [] };
 
   let filteredItems = data.items.filter((item) => {
-    if (!item.general_type || !item.general_type.name) return false;
+    // 필수 필드 확인: generalType과 university가 있어야 함
+    if (!item.generalType || !item.generalType.name) return false;
+    if (!item.university || !item.university.name) return false;
 
     // 지역 필터
     if (
@@ -236,20 +211,12 @@ const filterData = (
       return false;
     }
 
-    // 계열 필터
-    if (
-      formData.selectedGeneralFieldIds.length > 0 &&
-      !formData.selectedGeneralFieldIds.includes(item.general_type.id)
-    ) {
-      return false;
-    }
-
     // 특별전형 필터
     if (
       formData.basicType === "특별" &&
       formData.selectedSubtypeIds.length > 0 &&
       !formData.selectedSubtypeIds.some((id: number) =>
-        item.subtype_ids.includes(id),
+        item.subtypeIds.includes(id),
       )
     ) {
       return false;
@@ -260,7 +227,7 @@ const filterData = (
 
   if (isSorted) {
     filteredItems = filteredItems.sort(
-      (a, b) => (a.max_cut || 0) - (b.max_cut || 0),
+      (a, b) => (a.maxCut || 0) - (b.maxCut || 0),
     );
   }
 
