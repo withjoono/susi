@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { USER_API } from "./apis";
-import { ISchoolRecord } from "./interfaces";
-import { calculateMyAverageRating } from "@/lib/calculations/school-record/score";
+import { ISchoolRecord, ISchoolRecordSubject } from "./interfaces";
 
 export const meQueryKeys = {
   all: ["me"] as const,
@@ -70,8 +69,45 @@ export const useGetSchoolRecords = () => {
   });
 };
 
+// 전과목 평균 등급 계산 (PerformanceAnalysis1과 동일한 로직)
+const SUBJECT_CODES = {
+  KOREAN: "HH1",
+  MATH: "HH2",
+  SOCIETY: "HH4",
+  SCIENCE: "HH5",
+  ENGLISH: "HH3",
+};
+
+const calculateAverageRanking = (
+  subjects: ISchoolRecordSubject[],
+  subjectCodes: string[],
+): string => {
+  let totalWeightedGrade = 0;
+  let totalUnits = 0;
+
+  subjects.forEach((subject) => {
+    if (
+      subject.mainSubjectCode &&
+      subject.ranking &&
+      subject.unit &&
+      subjectCodes.includes(subject.mainSubjectCode)
+    ) {
+      const grade = parseFloat(subject.ranking);
+      const units = parseFloat(subject.unit);
+      if (!isNaN(grade) && !isNaN(units)) {
+        totalWeightedGrade += grade * units;
+        totalUnits += units;
+      }
+    }
+  });
+
+  if (totalUnits === 0) return "0.00";
+
+  return (totalWeightedGrade / totalUnits).toFixed(2);
+};
+
 /**
- * 내 평균 등급 조회
+ * 내 평균 등급 조회 (전과목 평균)
  */
 export const useGetMyGrade = () => {
   const { data: currentUser } = useGetCurrentUser();
@@ -87,12 +123,14 @@ export const useGetMyGrade = () => {
       if (!schoolRecords) {
         throw new Error("생기부 데이터를 찾을 수 없습니다");
       }
-      return parseFloat(
-        calculateMyAverageRating(
-          schoolRecords.subjects || [],
-          currentUser.major,
-        ),
+
+      // 전과목 평균 등급 계산 (국어, 수학, 영어, 사회, 과학)
+      const averageGrade = calculateAverageRanking(
+        schoolRecords.subjects || [],
+        Object.values(SUBJECT_CODES),
       );
+
+      return parseFloat(averageGrade);
     },
     enabled: !!currentUser && !!schoolRecords,
     staleTime: 60 * 60 * 1000, // 60 minutes

@@ -5,8 +5,10 @@ import {
   IExploreSusiKyokwaStep1Item,
   IExploreSusiKyokwaStep1Response,
 } from "@/stores/server/features/explore/susi-kyokwa/interfaces";
+import { useGetExploreSusiKyokwaStep4 } from "@/stores/server/features/explore/susi-kyokwa/queries";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface SelectedChartDataTableProps {
   className?: string;
@@ -26,52 +28,173 @@ export const SelectedChartDataTable = ({
   className,
 }: SelectedChartDataTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  // 모집단위 선택 상태 (모집단위 id 기반)
+  const [selectedRecruitmentUnits, setSelectedRecruitmentUnits] = useState<number[]>([]);
   const itemsPerPage = 10;
 
   const totalPages = Math.ceil(list.length / itemsPerPage);
 
-  const onClick = (item: IExploreSusiKyokwaStep1Item) => {
-    const key = `${item.university.region}-${item.university.name}-${item.name}-${item.general_type.name}`;
-    if (selectedUniversities.includes(key)) {
-      setSelectedUniversities(selectedUniversities.filter((n) => n !== key));
-    } else {
-      setSelectedUniversities([...selectedUniversities, key]);
-    }
-  };
-
-  const checkSelectedItem = (item: IExploreSusiKyokwaStep1Item) => {
-    const key = `${item.university.region}-${item.university.name}-${item.name}-${item.general_type.name}`;
-    return selectedUniversities.includes(key);
-  };
-
-  const handleSelectAll = () => {
-    const allKeys = list
-      .map((key) => {
+  // 현재 페이지에 표시되는 전형들의 recruitmentUnitIds 수집
+  const currentPageRecruitmentUnitIds = useMemo(() => {
+    const ids: number[] = [];
+    list
+      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+      .forEach((key) => {
         const item = data.items.find(
           (item) =>
-            `${item.university.region}-${item.university.name}-${item.name}-${item.general_type.name}` ===
+            `${item.university?.region}-${item.university?.name}-${item.name}-${item.generalType?.name}` ===
             key,
         );
-        return item
-          ? `${item.university.region}-${item.university.name}-${item.name}-${item.general_type.name}`
-          : "";
-      })
-      .filter(Boolean);
-    const areAllSelected = allKeys.every((key) =>
-      selectedUniversities.includes(key),
+        if (item?.recruitmentUnitIds) {
+          ids.push(...item.recruitmentUnitIds);
+        }
+      });
+    return ids;
+  }, [list, currentPage, data.items]);
+
+  // 모집단위 상세 정보 조회 (등급컷 포함)
+  const { data: recruitmentUnitsData } = useGetExploreSusiKyokwaStep4(
+    currentPageRecruitmentUnitIds,
+  );
+
+  const toggleExpand = (key: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedItems((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
     );
-    if (areAllSelected) {
-      setSelectedUniversities([]);
+  };
+
+  // 전형에 속한 모집단위 목록 가져오기
+  const getRecruitmentUnitsForItem = (item: IExploreSusiKyokwaStep1Item) => {
+    if (!recruitmentUnitsData?.items || !item.recruitmentUnitIds) return [];
+    return recruitmentUnitsData.items.filter((unit) =>
+      item.recruitmentUnitIds.includes(unit.id),
+    );
+  };
+
+  // 모집단위들의 등급컷 범위 계산
+  const getGradeCutRange = (item: IExploreSusiKyokwaStep1Item) => {
+    const units = getRecruitmentUnitsForItem(item);
+    if (units.length === 0) return { min: null, max: null };
+
+    const cuts = units
+      .map((u) => {
+        // humps converts snake_case to camelCase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const scores = u.scores as any;
+        const cut = scores?.grade70Cut ?? scores?.grade_70_cut;
+        return typeof cut === 'number' ? cut : parseFloat(cut);
+      })
+      .filter((cut): cut is number => !isNaN(cut));
+
+    if (cuts.length === 0) return { min: null, max: null };
+
+    return {
+      min: Math.min(...cuts),
+      max: Math.max(...cuts),
+    };
+  };
+
+  // 모집단위 선택/해제
+  const toggleRecruitmentUnit = (unitId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedRecruitmentUnits((prev) =>
+      prev.includes(unitId)
+        ? prev.filter((id) => id !== unitId)
+        : [...prev, unitId],
+    );
+  };
+
+  // 전형 전체 선택/해제 (해당 전형의 모든 모집단위)
+  const toggleAllUnitsInAdmission = (item: IExploreSusiKyokwaStep1Item) => {
+    const units = getRecruitmentUnitsForItem(item);
+    const unitIds = units.map((u) => u.id);
+    const allSelected = unitIds.every((id) => selectedRecruitmentUnits.includes(id));
+
+    if (allSelected) {
+      setSelectedRecruitmentUnits((prev) =>
+        prev.filter((id) => !unitIds.includes(id)),
+      );
     } else {
-      setSelectedUniversities(allKeys);
+      setSelectedRecruitmentUnits((prev) => {
+        const newIds = unitIds.filter((id) => !prev.includes(id));
+        return [...prev, ...newIds];
+      });
     }
   };
 
-  const isAllSelected = list.every((key) =>
-    selectedUniversities.includes(
-      `${data.items.find((item) => `${item.university.region}-${item.university.name}-${item.name}-${item.general_type.name}` === key)?.university.name}-${data.items.find((item) => `${item.university.region}-${item.university.name}-${item.name}-${item.general_type.name}` === key)?.name}-${data.items.find((item) => `${item.university.region}-${item.university.name}-${item.name}-${item.general_type.name}` === key)?.general_type.name}`,
-    ),
-  );
+  // 전형의 모든 모집단위가 선택되었는지 확인
+  const isAllUnitsSelected = (item: IExploreSusiKyokwaStep1Item) => {
+    const units = getRecruitmentUnitsForItem(item);
+    if (units.length === 0) return false;
+    return units.every((u) => selectedRecruitmentUnits.includes(u.id));
+  };
+
+  // 전체 선택/해제
+  const handleSelectAll = () => {
+    const allUnitIds: number[] = [];
+    list.forEach((key) => {
+      const item = data.items.find(
+        (item) =>
+          `${item.university?.region}-${item.university?.name}-${item.name}-${item.generalType?.name}` ===
+          key,
+      );
+      if (item?.recruitmentUnitIds) {
+        allUnitIds.push(...item.recruitmentUnitIds);
+      }
+    });
+
+    const allSelected = allUnitIds.every((id) =>
+      selectedRecruitmentUnits.includes(id),
+    );
+
+    if (allSelected) {
+      setSelectedRecruitmentUnits([]);
+    } else {
+      setSelectedRecruitmentUnits(allUnitIds);
+    }
+  };
+
+  // selectedUniversities 업데이트 (부모 컴포넌트와 동기화)
+  useMemo(() => {
+    const selectedKeys: string[] = [];
+    list.forEach((key) => {
+      const item = data.items.find(
+        (item) =>
+          `${item.university?.region}-${item.university?.name}-${item.name}-${item.generalType?.name}` ===
+          key,
+      );
+      if (item) {
+        const units = getRecruitmentUnitsForItem(item);
+        const hasSelectedUnit = units.some((u) =>
+          selectedRecruitmentUnits.includes(u.id),
+        );
+        if (hasSelectedUnit) {
+          selectedKeys.push(key);
+        }
+      }
+    });
+    // 부모 컴포넌트의 selectedUniversities 업데이트
+    if (JSON.stringify(selectedKeys.sort()) !== JSON.stringify(selectedUniversities.sort())) {
+      setSelectedUniversities(selectedKeys);
+    }
+  }, [selectedRecruitmentUnits, list, data.items, recruitmentUnitsData]);
+
+  const isAllSelected = useMemo(() => {
+    const allUnitIds: number[] = [];
+    list.forEach((key) => {
+      const item = data.items.find(
+        (item) =>
+          `${item.university?.region}-${item.university?.name}-${item.name}-${item.generalType?.name}` ===
+          key,
+      );
+      if (item?.recruitmentUnitIds) {
+        allUnitIds.push(...item.recruitmentUnitIds);
+      }
+    });
+    return allUnitIds.length > 0 && allUnitIds.every((id) => selectedRecruitmentUnits.includes(id));
+  }, [list, data.items, selectedRecruitmentUnits]);
 
   return (
     <div
@@ -81,10 +204,10 @@ export const SelectedChartDataTable = ({
       )}
     >
       <p className="text-center text-2xl font-semibold">
-        🏫 대학교 목록({selectedUniversities.length})
+        🏫 대학교 목록 ({selectedRecruitmentUnits.length}개 모집단위 선택)
       </p>
       <p className="text-center text-sm text-foreground/60">
-        내 등급과 비교하여 대학교를 선택해주세요!
+        내 등급과 비교하여 모집단위를 선택해주세요!
       </p>
       <div className="flex flex-col items-center justify-center gap-2 py-4">
         <p>🙋 내 등급이 표시되지 않는다면?</p>
@@ -93,10 +216,10 @@ export const SelectedChartDataTable = ({
         </Link>
       </div>
 
-      <div className="w-full max-w-screen-lg overflow-x-auto text-sm">
+      <div className="w-full max-w-screen-xl overflow-x-auto text-sm">
         <div className="mb-4 flex items-center justify-end gap-4">
           <p>
-            {selectedUniversities.length} / {list.length}
+            {selectedRecruitmentUnits.length}개 선택
           </p>
           <Button
             className="flex items-center px-3 py-1.5"
@@ -106,16 +229,17 @@ export const SelectedChartDataTable = ({
             <span>전체 선택/해제</span>
           </Button>
         </div>
-        <table className="w-full min-w-96 table-fixed bg-white">
+        <table className="w-full min-w-[900px] bg-white">
           <thead className="bg-gray-100">
             <tr>
-              <th className="w-8 shrink-0 py-2 font-normal">선택</th>
-              <th className="w-28 py-2 text-start font-normal">대학명</th>
-              <th className="w-32 py-2 text-start font-normal">상세 전형</th>
-              <th className="w-16 py-2 text-start font-normal">계열</th>
-              <th className="w-20 py-2 text-start font-normal">최고등급</th>
-              <th className="w-20 py-2 text-start font-normal">최저등급</th>
-              <th className="w-32 py-2 text-start font-normal">내 등급</th>
+              <th className="w-10 py-2 font-normal"></th>
+              <th className="w-12 py-2 font-normal">선택</th>
+              <th className="py-2 px-3 text-start font-normal whitespace-nowrap">대학명</th>
+              <th className="py-2 px-3 text-start font-normal whitespace-nowrap">전형명</th>
+              <th className="py-2 px-3 text-start font-normal whitespace-nowrap">계열</th>
+              <th className="py-2 px-3 text-start font-normal whitespace-nowrap">최초컷 범위</th>
+              <th className="py-2 px-3 text-start font-normal whitespace-nowrap">모집단위</th>
+              <th className="py-2 px-3 text-start font-normal whitespace-nowrap">내 등급</th>
             </tr>
           </thead>
           <tbody className="font-semibold">
@@ -127,38 +251,166 @@ export const SelectedChartDataTable = ({
               .map((key) => {
                 const item = data.items.find(
                   (item) =>
-                    `${item.university.region}-${item.university.name}-${item.name}-${item.general_type.name}` ===
+                    `${item.university?.region}-${item.university?.name}-${item.name}-${item.generalType?.name}` ===
                     key,
                 );
                 if (!item) return null;
 
-                const isSelected = checkSelectedItem(item);
+                const isExpanded = expandedItems.includes(key);
+                const recruitmentUnits = getRecruitmentUnitsForItem(item);
+                const unitCount = item.recruitmentUnitIds?.length || 0;
+                const gradeCutRange = getGradeCutRange(item);
+                const allUnitsSelected = isAllUnitsSelected(item);
+
                 return (
-                  <tr
-                    key={key}
-                    className="cursor-pointer border-t hover:bg-accent"
-                    onClick={() => onClick(item)}
-                  >
-                    <td className="align-middle">
-                      <div className="flex h-full items-center justify-center">
-                        <Checkbox checked={isSelected} />
-                      </div>
-                    </td>
-                    <td className="py-2">
-                      {item.university.name}({item.university.region})
-                    </td>
-                    <td className="py-2">{item.name}</td>
-                    <td className="py-2">{item.general_type.name}</td>
-                    <td className="py-2">
-                      {item.min_cut?.toFixed(2) || "-"} 등급
-                    </td>
-                    <td className="py-2">
-                      {item.max_cut?.toFixed(2) || "-"} 등급
-                    </td>
-                    <td className="py-2">
-                      {myGrade ? `${myGrade} 등급` : "내 성적 없음"}
-                    </td>
-                  </tr>
+                  <Fragment key={key}>
+                    <tr
+                      className="cursor-pointer border-t hover:bg-accent"
+                      onClick={() => toggleAllUnitsInAdmission(item)}
+                    >
+                      <td className="align-middle">
+                        {unitCount > 0 && (
+                          <button
+                            className="p-1 hover:bg-gray-200 rounded"
+                            onClick={(e) => toggleExpand(key, e)}
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </button>
+                        )}
+                      </td>
+                      <td className="align-middle">
+                        <div className="flex h-full items-center justify-center">
+                          <Checkbox checked={allUnitsSelected} />
+                        </div>
+                      </td>
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        {item.university?.name}({item.university?.region})
+                      </td>
+                      <td className="py-2 px-3 whitespace-nowrap">{item.name}</td>
+                      <td className="py-2 px-3 whitespace-nowrap">{item.generalType?.name}</td>
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        {gradeCutRange.min !== null && gradeCutRange.max !== null ? (
+                          gradeCutRange.min === gradeCutRange.max ? (
+                            <span>{gradeCutRange.min.toFixed(2)}등급</span>
+                          ) : (
+                            <span>
+                              {gradeCutRange.min.toFixed(2)} ~ {gradeCutRange.max.toFixed(2)}등급
+                            </span>
+                          )
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td className="py-2 px-3 text-primary whitespace-nowrap">
+                        {unitCount}개
+                      </td>
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        {myGrade ? `${myGrade.toFixed(2)}등급` : "내 성적 없음"}
+                      </td>
+                    </tr>
+                    {/* 모집단위 테이블 (확장 시) */}
+                    {isExpanded && recruitmentUnits.length > 0 && (
+                      <tr>
+                        <td colSpan={8} className="bg-gray-50 p-0">
+                          <div className="px-4 py-3">
+                            <p className="text-xs text-gray-500 mb-3 font-normal">
+                              📋 모집단위 목록 ({recruitmentUnits.length}개)
+                            </p>
+                            <table className="w-full bg-white border rounded">
+                              <thead className="bg-gray-100 text-xs">
+                                <tr>
+                                  <th className="py-2 px-3 text-start font-normal whitespace-nowrap">대학</th>
+                                  <th className="py-2 px-3 text-start font-normal whitespace-nowrap">계열</th>
+                                  <th className="py-2 px-3 text-start font-normal whitespace-nowrap">전형명</th>
+                                  <th className="py-2 px-3 text-start font-normal whitespace-nowrap">모집단위</th>
+                                  <th className="py-2 px-3 text-start font-normal whitespace-nowrap">최초컷</th>
+                                  <th className="py-2 px-3 text-start font-normal whitespace-nowrap">내등급차이</th>
+                                  <th className="py-2 px-3 text-center font-normal whitespace-nowrap">선택</th>
+                                </tr>
+                              </thead>
+                              <tbody className="text-xs">
+                                {recruitmentUnits.map((unit) => {
+                                  // humps converts snake_case to camelCase, so grade_70_cut becomes grade70Cut
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                  const scores = unit.scores as any;
+                                  const gradeCut = scores?.grade70Cut ?? scores?.grade_70_cut;
+                                  const gradeCutNum = typeof gradeCut === 'number' ? gradeCut : parseFloat(gradeCut);
+                                  const gradeDiff = !isNaN(gradeCutNum) && myGrade
+                                    ? (gradeCutNum - myGrade).toFixed(2)
+                                    : null;
+                                  const isSelected = selectedRecruitmentUnits.includes(unit.id);
+
+                                  return (
+                                    <tr
+                                      key={unit.id}
+                                      className={cn(
+                                        "border-t hover:bg-accent cursor-pointer",
+                                        isSelected && "bg-primary/10",
+                                      )}
+                                      onClick={(e) => toggleRecruitmentUnit(unit.id, e)}
+                                    >
+                                      <td className="py-2 px-3 whitespace-nowrap">
+                                        {unit.university?.name}
+                                      </td>
+                                      <td className="py-2 px-3 whitespace-nowrap">
+                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                        {(unit as any).generalField?.name || (unit as any).general_field?.name || "-"}
+                                      </td>
+                                      <td className="py-2 px-3 whitespace-nowrap">
+                                        {unit.admission?.name}
+                                      </td>
+                                      <td className="py-2 px-3 font-medium whitespace-nowrap">
+                                        {unit.name}
+                                      </td>
+                                      <td className="py-2 px-3 whitespace-nowrap">
+                                        {!isNaN(gradeCutNum) ? `${gradeCutNum.toFixed(2)}등급` : "-"}
+                                      </td>
+                                      <td className="py-2 px-3 whitespace-nowrap">
+                                        {gradeDiff !== null ? (
+                                          <span
+                                            className={cn(
+                                              "font-medium",
+                                              parseFloat(gradeDiff) > 0
+                                                ? "text-green-600"
+                                                : parseFloat(gradeDiff) < 0
+                                                  ? "text-red-600"
+                                                  : "text-gray-600",
+                                            )}
+                                          >
+                                            {parseFloat(gradeDiff) > 0 ? "+" : ""}
+                                            {gradeDiff}
+                                          </span>
+                                        ) : (
+                                          "-"
+                                        )}
+                                      </td>
+                                      <td className="py-2 px-3 text-center">
+                                        <Checkbox
+                                          checked={isSelected}
+                                          onClick={(e) => e.stopPropagation()}
+                                          onCheckedChange={() => {
+                                            setSelectedRecruitmentUnits((prev) =>
+                                              prev.includes(unit.id)
+                                                ? prev.filter((id) => id !== unit.id)
+                                                : [...prev, unit.id],
+                                            );
+                                          }}
+                                        />
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
           </tbody>

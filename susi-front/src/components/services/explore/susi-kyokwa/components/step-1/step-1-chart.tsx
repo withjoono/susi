@@ -32,24 +32,27 @@ const CustomTooltip = ({ active, payload }: any) => {
     return null;
   }
 
-  const range = payload?.[0]?.payload?.range ?? [];
-  const region = payload?.[0]?.payload?.university.region ?? "";
-  const university_name = payload?.[0]?.payload?.university.name ?? "";
-  const department = payload?.[0]?.payload?.general_type.name ?? "";
+  const minCut = payload?.[0]?.payload?.minCut ?? null;
+  const maxCut = payload?.[0]?.payload?.maxCut ?? null;
+  const region = payload?.[0]?.payload?.university?.region ?? "";
+  const university_name = payload?.[0]?.payload?.university?.name ?? "";
+  const department = payload?.[0]?.payload?.generalType?.name ?? "";
+  const admissionName = payload?.[0]?.payload?.name ?? "";
 
-  const minGrade = reverseGrade(range[1] ?? 0);
-  const maxGrade = reverseGrade(range[0] ?? 0);
+  const formatRange = () => {
+    if (minCut === null || maxCut === null) return "정보 없음";
+    if (minCut === maxCut) return `${Number(minCut).toFixed(2)}등급`;
+    return `${Number(minCut).toFixed(2)} ~ ${Number(maxCut).toFixed(2)}등급`;
+  };
 
   return (
     <div className="rounded-md bg-background px-4 py-4 text-foreground shadow-lg">
-      <p>{`${region} - ${university_name} - ${department}`}</p>
-      <p className="text-sm font-semibold text-primary">
-        등급컷{" "}
-        {minGrade !== null && maxGrade !== null
-          ? `${minGrade.toFixed(2)} ~ ${maxGrade.toFixed(2)}`
-          : "정보 없음"}
+      <p className="font-medium">{`${university_name}(${region})`}</p>
+      <p className="text-sm text-foreground/70">{`${admissionName} - ${department}`}</p>
+      <p className="text-sm font-semibold text-primary mt-1">
+        최초컷 범위: {formatRange()}
       </p>
-      <p className="pt-1 text-xs">선택하려면 클릭해주세요.</p>
+      <p className="pt-1 text-xs text-foreground/60">선택하려면 클릭해주세요.</p>
     </div>
   );
 };
@@ -62,29 +65,25 @@ export const Step1Chart = ({
 }: Step1Props) => {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
-  // Debug: Log preprocessing steps
-  console.log('[Step1Chart] Input data.items:', data.items.length);
+  // Debug: Check myGrade value
+  console.log('[Step1Chart] myGrade:', myGrade, 'reversed:', reverseGrade(myGrade));
 
   const mapped = data.items.map((item, index) => {
-    const maxReversed = reverseGrade(item.max_cut);
-    const minReversed = reverseGrade(item.min_cut);
+    // minCut과 maxCut을 사용하여 최초컷 범위 표시
+    const minCutReversed = reverseGrade(item.minCut);
+    const maxCutReversed = reverseGrade(item.maxCut);
+
+    // minCut과 maxCut 범위로 바 표시 (reversed이므로 min/max가 뒤바뀜)
+    const range = minCutReversed !== null && maxCutReversed !== null
+      ? [Math.min(minCutReversed, maxCutReversed), Math.max(minCutReversed, maxCutReversed)]
+      : [];
+
     return {
       ...item,
       index,
-      range:
-        maxReversed !== null && minReversed !== null
-          ? [maxReversed, minReversed]
-          : [],
-      xLabelData: `${item.university.region}\n${item.university.name}\n${item.name}\n${item.general_type.name}`,
-      debug: { maxReversed, minReversed, max_cut: item.max_cut, min_cut: item.min_cut }
+      range,
+      xLabelData: `${item.university.region}\n${item.university.name}\n${item.name}\n${item.generalType?.name || ''}`,
     };
-  });
-
-  console.log('[Step1Chart] After mapping:', {
-    count: mapped.length,
-    firstItem: mapped[0],
-    itemsWithRange: mapped.filter(i => i.range.length === 2).length,
-    itemsWithoutRange: mapped.filter(i => i.range.length !== 2).length
   });
 
   const preprocessed = mapped.filter((item) => {
@@ -95,14 +94,8 @@ export const Step1Chart = ({
       min >= 1 &&
       max <= 9 &&
       max >= 1 &&
-      min < max &&
-      max - min > 1e-3
+      min <= max
     );
-  });
-
-  console.log('[Step1Chart] After filtering:', {
-    count: preprocessed.length,
-    firstItem: preprocessed[0]
   });
 
   const barSize = 120;
@@ -172,7 +165,7 @@ export const Step1Chart = ({
           dataKey="range"
           radius={[4, 4, 4, 4]}
           barSize={barSize - 50}
-          name="등급컷"
+          name="최초컷 범위"
           onMouseMove={(data: any) => {
             if (data && data.index !== undefined) {
               setHoverIdx(data.index);
@@ -203,20 +196,23 @@ export const Step1Chart = ({
             </feMerge>
           </filter>
         </defs>
-        <ReferenceLine
-          y={reverseGrade(myGrade) ?? 0}
-          stroke="hsl(var(--primary))"
-          strokeWidth={2}
-        >
-          <Label
-            value="내 등급"
-            offset={6}
-            position="insideTopLeft"
-            fill="#ffffff"
-            filter="url(#solid)"
-            className="text-xs font-semibold"
-          />
-        </ReferenceLine>
+        {myGrade !== null && myGrade !== undefined && (
+          <ReferenceLine
+            y={reverseGrade(myGrade) ?? undefined}
+            stroke="hsl(var(--primary))"
+            strokeWidth={3}
+            strokeDasharray="5 5"
+          >
+            <Label
+              value={`내 등급: ${myGrade.toFixed(2)}`}
+              offset={10}
+              position="insideTopLeft"
+              fill="#ffffff"
+              filter="url(#solid)"
+              className="text-xs font-semibold"
+            />
+          </ReferenceLine>
+        )}
       </BarChart>
     </ResponsiveContainer>
   );
