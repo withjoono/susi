@@ -7,6 +7,9 @@ import { GradeAnalysisHeader } from "@/components/grade-analysis-header";
 import ScrollToTop from "@/components/scroll-to-top";
 import { Toaster } from "@/components/ui/sonner";
 import { createRootRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { processSSOLogin } from "@/lib/utils/sso-helper";
+import { toast } from "sonner";
 
 function isJungsiPath(pathname: string): boolean {
   return pathname.startsWith("/jungsi") || pathname.startsWith("/j");
@@ -26,6 +29,18 @@ function isGradeAnalysisPath(pathname: string): boolean {
 
 function RootLayout() {
   const location = useLocation();
+
+  // SSO 코드 처리 (Hub에서 넘어온 경우)
+  useEffect(() => {
+    const handleSSO = async () => {
+      const ssoSuccess = await processSSOLogin();
+      if (ssoSuccess) {
+        toast.success('Hub에서 자동 로그인되었습니다.');
+      }
+    };
+
+    handleSSO();
+  }, []);
 
   const isTestPage = location.pathname === "/test/auth-me" || location.pathname === "/test/login-debug";
   const isAuthPage = location.pathname.startsWith("/auth/");
