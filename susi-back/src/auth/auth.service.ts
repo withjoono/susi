@@ -391,4 +391,62 @@ export class AuthService {
       throw new UnauthorizedException('유효하지 않거나 만료된 토큰입니다.');
     }
   }
+
+  // ==========================================
+  // SSO (Single Sign-On) Backend Token Exchange
+  // ==========================================
+
+  /**
+   * SSO 코드 교환
+   * Hub Backend에 코드를 검증하고 토큰을 받아옵니다
+   *
+   * @param code Hub에서 받은 SSO 일회용 코드
+   * @returns 토큰 정보
+   */
+  async exchangeSsoCode(code: string): Promise<LoginResponseType> {
+    try {
+      // Hub Backend URL 가져오기
+      const hubBaseUrl = process.env.HUB_BASE_URL || 'http://localhost:4000';
+
+      // Hub Backend에 코드 검증 요청
+      const response = await firstValueFrom(
+        this.httpService
+          .post(`${hubBaseUrl}/api/auth/sso/verify-code`, {
+            code,
+            serviceId: 'susi', // Susi 서비스 식별자
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `[SSO 코드 교환 실패] Hub Backend 응답 에러: ${error.message}`,
+              );
+              if (error.response?.status === 401) {
+                throw new UnauthorizedException('SSO 코드가 유효하지 않거나 만료되었습니다.');
+              }
+              throw new BadRequestException('SSO 인증에 실패했습니다.');
+            }),
+          ),
+      );
+
+      const tokenData = response.data.data || response.data;
+
+      this.logger.info('[SSO 코드 교환 성공] Hub에서 토큰을 받았습니다');
+
+      return {
+        accessToken: tokenData.accessToken,
+        refreshToken: tokenData.refreshToken,
+        tokenExpiry: tokenData.tokenExpiry,
+        activeServices: tokenData.activeServices || [],
+      };
+    } catch (error) {
+      this.logger.error(`[SSO 코드 교환 실패] ${error.message}`);
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      throw new BadRequestException('SSO 인증 처리 중 오류가 발생했습니다.');
+    }
+  }
 }

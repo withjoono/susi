@@ -39,6 +39,7 @@ import { CookieService } from './services/cookie.service';
 import { OAuthClientService } from './services/oauth-client.service';
 import { Inject, OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
+import { SsoExchangeDto } from './dtos/sso-exchange.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -672,5 +673,35 @@ export class AuthController implements OnModuleInit {
     callbackUrl.searchParams.set('token_expiry', tokenExpiry.toString());
 
     res.redirect(callbackUrl.toString());
+  }
+
+  // ==========================================
+  // SSO (Single Sign-On) Backend Token Exchange
+  // ==========================================
+
+  @ApiOperation({
+    summary: 'SSO 코드 교환 (Backend Token Exchange)',
+    description:
+      'Hub에서 받은 SSO 코드를 Hub Backend에 검증하고 토큰을 받아옵니다. 이 엔드포인트는 Susi Frontend에서 호출되며, Hub Backend와의 통신을 담당합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'SSO 코드 교환 성공 및 토큰 발급',
+    schema: {
+      example: {
+        accessToken: 'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9...',
+        refreshToken: 'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9...',
+        tokenExpiry: 7200,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'SSO 코드 유효하지 않거나 만료됨',
+  })
+  @Public()
+  @Post('sso/exchange')
+  public async exchangeSsoCode(@Body() dto: SsoExchangeDto): Promise<LoginResponseType> {
+    return this.service.exchangeSsoCode(dto.code);
   }
 }
